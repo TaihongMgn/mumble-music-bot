@@ -561,11 +561,24 @@ def post():
 
             current = var.playlist.current_index
             if index != current and index != current + 1:
-                item = var.playlist[index]
+                wrapper = var.playlist[index]
+                item_obj = wrapper.item()
                 target = current if index < current else current + 1
+                # 先保存重建信息（remove 会释放 radio 等非持久化 item 的缓存）
+                rebuild_kwargs = {}
+                if item_obj.type == 'radio':
+                    rebuild_kwargs = {'type': 'radio', 'url': item_obj.url, 'name': item_obj.title}
+                elif item_obj.type == 'url':
+                    rebuild_kwargs = {'type': 'url', 'url': item_obj.url}
+                elif item_obj.type == 'file':
+                    rebuild_kwargs = {'type': 'file', 'path': item_obj.path}
+                else:
+                    rebuild_kwargs = {'type': item_obj.type, 'url': item_obj.url}
                 var.playlist.remove(index)
-                var.playlist.insert(target, item)
-                log.info("web: move playlist item next: " + item.format_debug_string())
+                # 重建 wrapper（保持原 item 在缓存中，避免渲染时 ItemNotCachedError）
+                music_wrapper = get_cached_wrapper_from_scrap(user=user, **rebuild_kwargs)
+                var.playlist.insert(target, music_wrapper)
+                log.info("web: move playlist item next: " + music_wrapper.format_debug_string())
                 if not var.bot.is_pause:
                     var.bot.interrupt()
 
