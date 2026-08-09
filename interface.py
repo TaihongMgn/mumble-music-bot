@@ -579,8 +579,9 @@ def post():
                 music_wrapper = get_cached_wrapper_from_scrap(user=user, **rebuild_kwargs)
                 var.playlist.insert(target, music_wrapper)
                 log.info("web: move playlist item next: " + music_wrapper.format_debug_string())
-                if not var.bot.is_pause:
-                    var.bot.interrupt()
+                # 注意：这里不能调 var.bot.interrupt()
+                # interrupt() 会杀掉 ffmpeg 线程，loop 检测到 last_ffmpeg_err 非空时
+                # 会删除当前播放歌曲（mumbleBot.py 约 565-575 行），导致队列丢歌。
 
         elif 'add_url' in payload:
             music_wrapper = get_cached_wrapper_from_scrap(type='url', url=payload['add_url'], user=user)
