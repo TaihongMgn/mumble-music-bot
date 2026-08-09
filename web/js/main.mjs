@@ -103,11 +103,13 @@ function request(_url, _data, refresh = false) {
     data: _data,
     statusCode: {
       200: function(data) {
-        if (data.ver !== playlist_ver) {
-          checkForPlaylistUpdate();
+        if (typeof data.ver === 'number') {
+          if (data.ver !== playlist_ver) {
+            checkForPlaylistUpdate();
+          }
+          updateControls(data.empty, data.play, data.mode, data.volume);
+          updatePlayerPlayhead(data.playhead);
         }
-        updateControls(data.empty, data.play, data.mode, data.volume);
-        updatePlayerPlayhead(data.playhead);
       },
       403: function() {
         location.reload(true);
@@ -158,6 +160,9 @@ function addPlaylistItem(item) {
 }
 
 function displayPlaylist(data) {
+  if (typeof data.ver === 'number') {
+    playlist_ver = data.ver;
+  }
   playlist_table.animate({
     opacity: 0,
   }, 200, function() {
@@ -1202,6 +1207,11 @@ const neteasePlaylistFetchBtn = document.getElementById('netease-playlist-fetch-
 const neteasePlaylistResult = document.getElementById('netease-playlist-result');
 const neteaseSavedPlaylists = document.getElementById('netease-saved-playlists');
 
+function refreshPlaylistAfterNeteasePlayback() {
+  playlist_ver = -1;
+  checkForPlaylistUpdate();
+}
+
 function neteasePlaylistLabel(name) {
   return escapeNeteaseHtml(neteasePlaylistCard.dataset[name] || '');
 }
@@ -1231,6 +1241,7 @@ function renderNeteasePlaylist(playlist) {
   `;
   neteasePlaylistResult.querySelector('.netease-playlist-play-all-btn').addEventListener('click', () => {
     request('post', {play_netease_playlist_url: playlist.id}).done((data) => {
+      refreshPlaylistAfterNeteasePlayback();
       if (data.added !== undefined) {
         neteasePlaylistResult.insertAdjacentHTML('afterbegin',
           `<div class="alert alert-info">${neteasePlaylistLabel('addedLabel').replace('{count}', data.added)}</div>`);
@@ -1275,6 +1286,7 @@ async function loadNeteaseSavedPlaylists() {
     neteaseSavedPlaylists.querySelectorAll('.netease-saved-play-btn').forEach((button) => {
       button.addEventListener('click', () => {
         request('post', {play_netease_playlist: button.dataset.id}).done((result) => {
+          refreshPlaylistAfterNeteasePlayback();
           if (result.added !== undefined) {
             neteaseSavedPlaylists.insertAdjacentHTML('afterbegin',
               `<div class="alert alert-info">${neteasePlaylistLabel('addedLabel').replace('{count}', result.added)}</div>`);

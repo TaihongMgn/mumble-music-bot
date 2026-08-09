@@ -587,6 +587,7 @@ def post():
                     tracks = saved_playlist.get('songs') or []
                 else:
                     tracks = client.get_playlist_tracks(playlist_id)
+                var.playlist.clear()
                 added, skipped = _add_netease_tracks(client, cookie, tracks, user)
             except (requests.RequestException, ValueError, TypeError):
                 log.exception("web: Netease playlist playback failed")

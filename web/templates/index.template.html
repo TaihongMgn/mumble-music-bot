@@ -153,6 +153,59 @@
         </div>
     </main>
 
+    <div class="container mb-5">
+        <div class="card-deck">
+            <div id="add-netease" class="card" data-free-label="{{ tr('netease_free') }}" data-vip-label="{{ tr('netease_vip') }}">
+                <div class="card-header">
+                    <h3 class="card-title">{{ tr('add_netease') }}</h3>
+                </div>
+                <div class="card-body">
+                    <label for="netease-search-input">{{ tr('netease_search_label') }}</label>
+                    <div class="input-group mb-2">
+                        <input class="form-control" type="text" id="netease-search-input" placeholder="{{ tr('netease_placeholder') }}">
+                    </div>
+                    <button type="button" class="btn btn-primary" id="netease-search-btn">
+                        {{ tr('search') }}
+                    </button>
+                    <div id="netease-results" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <div id="netease-playlist-card" class="card"
+             data-play-all-label="{{ tr('netease_playlist_play_all') }}"
+             data-save-label="{{ tr('netease_playlist_save') }}"
+             data-play-label="{{ tr('netease_playlist_play') }}"
+             data-delete-label="{{ tr('netease_playlist_delete') }}"
+             data-no-result-label="{{ tr('netease_playlist_no_result') }}"
+             data-error-label="{{ tr('netease_playlist_error') }}"
+             data-saved-label="{{ tr('netease_playlist_saved') }}"
+             data-deleted-label="{{ tr('netease_playlist_deleted') }}"
+             data-added-label="{{ tr('netease_playlist_added') }}"
+             data-empty-label="{{ tr('netease_playlist_empty') }}"
+             data-song-count-label="{{ tr('netease_playlist_song_count') }}">
+            <div class="card-header">
+                <h3 class="card-title">{{ tr('netease_playlist') }}</h3>
+            </div>
+            <div class="card-body">
+                <label for="netease-playlist-input">{{ tr('netease_playlist_input_label') }}</label>
+                <div class="input-group mb-2">
+                    <input class="form-control" type="text" id="netease-playlist-input"
+                           placeholder="{{ tr('netease_playlist_placeholder') }}">
+                </div>
+                <button type="button" class="btn btn-primary" id="netease-playlist-fetch-btn">
+                    {{ tr('netease_playlist_fetch') }}
+                </button>
+                <div id="netease-playlist-result" class="mt-3"></div>
+                <hr>
+                <h5>{{ tr('netease_saved_playlists') }}</h5>
+                <div id="netease-saved-playlists" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="container mb-3">
         <h2 id="forms">{{ tr('music_library') }}</h2>
 
@@ -397,59 +450,6 @@
                         {{ tr('add_radio') }}
                     </button>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="container mb-5">
-        <div class="card-deck">
-            <div id="add-netease" class="card" data-free-label="{{ tr('netease_free') }}" data-vip-label="{{ tr('netease_vip') }}">
-                <div class="card-header">
-                    <h3 class="card-title">{{ tr('add_netease') }}</h3>
-                </div>
-                <div class="card-body">
-                    <label for="netease-search-input">{{ tr('netease_search_label') }}</label>
-                    <div class="input-group mb-2">
-                        <input class="form-control" type="text" id="netease-search-input" placeholder="{{ tr('netease_placeholder') }}">
-                    </div>
-                    <button type="button" class="btn btn-primary" id="netease-search-btn">
-                        {{ tr('search') }}
-                    </button>
-                    <div id="netease-results" class="mt-3"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="container mb-5">
-        <div id="netease-playlist-card" class="card"
-             data-play-all-label="{{ tr('netease_playlist_play_all') }}"
-             data-save-label="{{ tr('netease_playlist_save') }}"
-             data-play-label="{{ tr('netease_playlist_play') }}"
-             data-delete-label="{{ tr('netease_playlist_delete') }}"
-             data-no-result-label="{{ tr('netease_playlist_no_result') }}"
-             data-error-label="{{ tr('netease_playlist_error') }}"
-             data-saved-label="{{ tr('netease_playlist_saved') }}"
-             data-deleted-label="{{ tr('netease_playlist_deleted') }}"
-             data-added-label="{{ tr('netease_playlist_added') }}"
-             data-empty-label="{{ tr('netease_playlist_empty') }}"
-             data-song-count-label="{{ tr('netease_playlist_song_count') }}">
-            <div class="card-header">
-                <h3 class="card-title">{{ tr('netease_playlist') }}</h3>
-            </div>
-            <div class="card-body">
-                <label for="netease-playlist-input">{{ tr('netease_playlist_input_label') }}</label>
-                <div class="input-group mb-2">
-                    <input class="form-control" type="text" id="netease-playlist-input"
-                           placeholder="{{ tr('netease_playlist_placeholder') }}">
-                </div>
-                <button type="button" class="btn btn-primary" id="netease-playlist-fetch-btn">
-                    {{ tr('netease_playlist_fetch') }}
-                </button>
-                <div id="netease-playlist-result" class="mt-3"></div>
-                <hr>
-                <h5>{{ tr('netease_saved_playlists') }}</h5>
-                <div id="netease-saved-playlists" class="mt-2"></div>
             </div>
         </div>
     </div>
