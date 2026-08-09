@@ -18,6 +18,7 @@ from media.item import item_id_generators, dict_to_item, dicts_to_items, Validat
 from media.cache import get_cached_wrapper_from_scrap, get_cached_wrapper_by_id, get_cached_wrappers_by_tags, \
     get_cached_wrapper, get_cached_wrappers, get_cached_wrapper_from_dict, get_cached_wrappers_from_dicts
 from media.url_from_playlist import get_playlist_info
+from netease_cmd import *
 
 log = logging.getLogger("bot")
 
@@ -63,6 +64,15 @@ def register_all_commands(bot):
     bot.register_command(commands('volume'), cmd_volume)
     bot.register_command(commands('yt_play'), cmd_yt_play)
     bot.register_command(commands('yt_search'), cmd_yt_search)
+    bot.register_command('yun', cmd_yun_dispatch, access_outside_channel=True)
+    bot.register_command(commands('yun_play'), cmd_yun_play)
+    bot.register_command(commands('yun_add'), cmd_yun_add)
+    bot.register_command(commands('yun_search'), cmd_yun_search)
+    bot.register_command(commands('yun_playid'), cmd_yun_playid)
+    bot.register_command(commands('yun_addid'), cmd_yun_addid)
+    bot.register_command(commands('yun_gedan'), cmd_yun_gedan)
+    bot.register_command(commands('yun_gedanid'), cmd_yun_gedanid)
+    bot.register_command(commands('yun_login'), cmd_yun_login)
 
     # admin command
     bot.register_command(commands('add_webinterface_user'), cmd_web_user_add, admin=True)

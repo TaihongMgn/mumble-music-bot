@@ -91,7 +91,26 @@
         "wrong_pattern": "Invalid regex: {error}.",
         "yt_no_more": "No more results!",
         "yt_query_error": "Unable to query youtube!",
-        "yt_result": "Youtube query result: {result_table} Use <i>!sl {{indexes}}</i> to play the item you want. <br />\n<i>!ytquery -n</i> for the next page."
+        "yt_result": "Youtube query result: {result_table} Use <i>!sl {{indexes}}</i> to play the item you want. <br />\n<i>!ytquery -n</i> for the next page.",
+        "netease_searching": "Searching Netease Cloud Music...",
+        "netease_no_result": "No matching songs were found.",
+        "netease_search_error": "Netease Cloud Music search failed. Please check the API service.",
+        "netease_play_error": "Could not get a playable URL. The song may require VIP access. Use !yun login first.",
+        "netease_playing": "Now playing: {song} - {artist}",
+        "netease_added": "Added to playlist: {song} - {artist}",
+        "netease_login_qr": "Scan this QR code to log in to Netease Cloud Music (valid for 5 minutes): {url}",
+        "netease_login_success": "Netease Cloud Music login succeeded. VIP songs can now be played.",
+        "netease_login_timeout": "Login timed out. Please try again.",
+        "netease_login_waiting": "Waiting for QR login...",
+        "netease_playlist_loading": "Loading playlist...",
+        "netease_playlist_added": "Added {count} songs from the playlist.",
+        "netease_help": "Netease Cloud Music commands: !yun play/add/search/playid/addid/gedan/gedanid/login",
+        "netease_index": "Index",
+        "netease_song": "Song",
+        "netease_artist": "Artist",
+        "netease_status": "Status",
+        "netease_available": "Playable",
+        "netease_requires_login": "Login/VIP required"
     },
     "web": {
         "action": "Action",
@@ -168,6 +187,13 @@
         "url": "URL",
         "url_path": "Url/Path",
         "url_placeholder": "URL...",
-        "volume_slider": "Volume Slider"
+        "volume_slider": "Volume Slider",
+        "add_netease": "Netease Cloud Music",
+        "netease_search_label": "Search Netease Cloud Music",
+        "netease_placeholder": "Enter a song or artist...",
+        "search": "Search",
+        "netease_search_error": "Netease Cloud Music search failed. Please try again.",
+        "netease_free": "Free",
+        "netease_vip": "VIP/login required"
     }
 }

@@ -1147,6 +1147,54 @@ document.getElementById('add-radio-url').querySelector('button').addEventListene
   radioUrlInput.value = '';
 });
 
+// Netease Cloud Music search
+const neteaseSearchInput = document.getElementById('netease-search-input');
+const neteaseSearchBtn = document.getElementById('netease-search-btn');
+const neteaseResults = document.getElementById('netease-results');
+const neteaseCard = document.getElementById('add-netease');
+
+function escapeNeteaseHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[character]));
+}
+
+if (neteaseSearchBtn) {
+  neteaseSearchBtn.addEventListener('click', async () => {
+    const keywords = neteaseSearchInput.value.trim();
+    if (!keywords) return;
+    try {
+      const response = await fetch(`/api/netease/search?keywords=${encodeURIComponent(keywords)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        neteaseResults.textContent = data.error || '';
+        return;
+      }
+      neteaseResults.innerHTML = (data.songs || []).map((song) => `
+        <div class="d-flex align-items-center mb-2">
+          <img src="${escapeNeteaseHtml(song.cover || '')}" width="40" height="40" class="mr-2" alt="">
+          <div class="flex-grow-1">
+            <div>${escapeNeteaseHtml(song.name)} - ${escapeNeteaseHtml(song.artist)}</div>
+            <small class="text-muted">${song.fee === 0 ? neteaseCard.dataset.freeLabel : neteaseCard.dataset.vipLabel}</small>
+          </div>
+          <button type="button" class="btn btn-sm btn-primary ml-2 netease-add-btn" data-id="${escapeNeteaseHtml(song.id)}">+</button>
+        </div>
+      `).join('');
+      neteaseResults.querySelectorAll('.netease-add-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          request('post', {add_netease: button.dataset.id});
+        });
+      });
+    } catch (error) {
+      console.error('Netease search failed', error);
+    }
+  });
+}
+
 // ---------------------
 // ------  Player ------
 // ---------------------

@@ -21,8 +21,11 @@ from media.radio import RadioItem
 from media.cache import get_cached_wrapper_from_scrap, get_cached_wrapper_by_id, get_cached_wrappers_by_tags, \
     get_cached_wrapper
 from database import MusicDatabase, Condition
+from constants import tr_web
+from netease import NeteaseClient, NeteaseCookieManager
 import logging
 import time
+import requests
 
 
 class ReverseProxied(object):
@@ -330,6 +333,34 @@ def status():
                         })
 
 
+
+
+@web.route("/api/netease/search", methods=['GET'])
+@requires_auth
+def netease_search():
+    keywords = request.args.get('keywords', '').strip()
+    if not keywords:
+        return jsonify({'songs': []})
+    try:
+        client = NeteaseClient(var.config.get('netease', 'api_url'))
+        limit = var.config.getint('netease', 'default_search_limit', fallback=10)
+        results = client.search(keywords, limit)
+        return jsonify({'songs': results})
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: Netease search failed")
+        return jsonify({'songs': [], 'error': tr_web('netease_search_error')}), 502
+
+
+@web.route("/netease/qr_login.png", methods=['GET'])
+@requires_auth
+def netease_qr_login_image():
+    image_path = util.solve_filepath(
+        var.config.get('netease', 'qr_image_path', fallback='music/qr_login.png'))
+    if not os.path.isfile(image_path):
+        abort(404)
+    return send_file(image_path, mimetype='image/png')
+
+
 @web.route("/post", methods=['POST'])
 @requires_auth
 def post():
@@ -383,6 +414,28 @@ def post():
             var.playlist.append(music_wrapper)
 
             log.info("cmd: add to playlist: " + music_wrapper.format_debug_string())
+
+        elif 'add_netease' in payload:
+            song_id = payload['add_netease']
+            try:
+                client = NeteaseClient(var.config.get('netease', 'api_url'))
+                cookie_manager = NeteaseCookieManager(
+                    var.config.get('netease', 'cookie_file', fallback='config/netease_cookie.txt'))
+                url = client.get_song_url(song_id, cookie_manager.get_cookie())
+                detail = client.get_song_detail(song_id)
+                title = (detail.get('name', '') or '') if detail else ''
+                artist = (detail.get('artist', '') or '') if detail else ''
+                name = f"{title} - {artist}" if title else ""
+            except (requests.RequestException, ValueError, TypeError):
+                log.exception("web: could not get Netease song URL")
+                abort(502)
+            if not url:
+                abort(400)
+            music_wrapper = get_cached_wrapper_from_scrap(type='radio', url=url, name=name, user=user)
+            var.playlist.append(music_wrapper)
+            log.info("web: add Netease item to playlist: " + music_wrapper.format_debug_string())
+            if len(var.playlist) == 2:
+                var.bot.async_download_next()
 
         elif 'delete_music' in payload:
             music_wrapper = var.playlist[int(payload['delete_music'])]
