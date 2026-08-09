@@ -30,11 +30,7 @@
             </a>
             <a href="#" class="nav-link" data-view="view-library">
                 <i class="fas fa-folder" aria-hidden="true"></i>
-                <span>{{ tr('nav_library') }}</span>
-            </a>
-            <a href="#" class="nav-link" data-view="view-library" data-scroll-target="upload">
-                <i class="fas fa-upload" aria-hidden="true"></i>
-                <span>{{ tr('nav_upload') }}</span>
+                <span>{{ tr('nav_library_upload') }}</span>
             </a>
         </nav>
     </aside>
@@ -178,7 +174,7 @@
         </div>
 
         <div id="view-netease" class="app-view">
-    <div class="container mb-5">
+    <div class="netease-card-wrap">
         <div class="card-deck">
             <div id="add-netease" class="card" data-free-label="{{ tr('netease_free') }}" data-vip-label="{{ tr('netease_vip') }}">
                 <div class="card-header">
@@ -197,7 +193,7 @@
             </div>
         </div>
     </div>
-    <div class="container mb-5">
+    <div class="netease-card-wrap">
         <div id="netease-playlist-card" class="card"
              data-play-all-label="{{ tr('netease_playlist_play_all') }}"
              data-save-label="{{ tr('netease_playlist_save') }}"
@@ -229,7 +225,7 @@
             </div>
         </div>
     </div>
-    <div class="container mb-5">
+    <div class="netease-card-wrap">
         <div id="netease-account-card" class="card"
              data-not-logged-in-label="{{ tr('netease_not_logged_in') }}"
              data-listening-time-label="{{ tr('netease_listening_time') }}"
@@ -241,7 +237,7 @@
             <div class="card-body" id="netease-account-body"></div>
         </div>
     </div>
-    <div class="container mb-5">
+    <div class="netease-card-wrap">
         <div class="card-deck">
             <div id="add-music-url" class="card">
                 <div class="card-header">

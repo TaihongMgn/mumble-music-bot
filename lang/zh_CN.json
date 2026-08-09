@@ -160,7 +160,7 @@
         "no_tag": "无标签",
         "oneshot": "顺序播放",
         "open_volume_controls": "打开音量控制条",
-        "page_title": "botamusique控制面板",
+        "page_title": "Ffmusicbot面板",
         "pause": "暂停",
         "play": "播放",
         "playlist_controls": "播放控制",
@@ -219,7 +219,7 @@
         "nav_playlist": "播放列表",
         "nav_netease": "网易云",
         "nav_library": "音乐库",
-        "nav_upload": "上传",
+        "nav_library_upload": "音乐库&上传",
         "navigation": "主导航",
         "switch_theme": "切换主题"
     }

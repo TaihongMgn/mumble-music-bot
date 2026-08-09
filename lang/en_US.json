@@ -160,7 +160,7 @@
         "no_tag": "No tag",
         "oneshot": "One-shot",
         "open_volume_controls": "Open Volume Controls",
-        "page_title": "botamusique Web Interface",
+        "page_title": "Ffmusicbot Panel",
         "pause": "Pause",
         "play": "Play",
         "playlist_controls": "Playlist controls",
@@ -219,7 +219,7 @@
         "nav_playlist": "Playlist",
         "nav_netease": "Netease",
         "nav_library": "Library",
-        "nav_upload": "Upload",
+        "nav_library_upload": "Library & Upload",
         "navigation": "Main navigation",
         "switch_theme": "Switch theme"
     }

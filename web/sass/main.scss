@@ -408,9 +408,18 @@ body {
     overflow: hidden;
 }
 
-#view-netease .card,
 #view-library .card {
     margin-bottom: 18px;
+}
+
+#view-netease .netease-card-wrap {
+    margin-bottom: 18px;
+    width: 100%;
+}
+
+#view-netease .netease-card-wrap > .card {
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 #view-netease .card-deck {
