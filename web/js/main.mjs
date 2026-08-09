@@ -61,6 +61,7 @@ let playing = false;
 const playPauseBtn = $('#play-pause-btn');
 const fastForwardBtn = $('#fast-forward-btn');
 const volumeSlider = document.getElementById('volume-slider');
+const playerVolumeSlider = document.querySelector('.player-volume-slider');
 
 const playModeBtns = {
   'one-shot': $('#one-shot-mode-btn'),
@@ -359,6 +360,9 @@ function updateControls(empty, play, mode, volume) {
       volumeSlider.value = 0;
     } else {
       volumeSlider.value = volume;
+    }
+    if (playerVolumeSlider) {
+      playerVolumeSlider.value = volumeSlider.value;
     }
   }
 }
@@ -950,6 +954,11 @@ volumePopoverBtn.addEventListener('click', function(e) {
   e.stopPropagation();
 });
 
+playerVolumeSlider.addEventListener('change', (e) => {
+  volumeSlider.value = e.target.value;
+  volumeSlider.dispatchEvent(new Event('change'));
+});
+
 volumeSlider.addEventListener('change', (e) => {
   window.clearTimeout(volume_update_timer);
 
@@ -1386,6 +1395,7 @@ loadNeteaseAccount();
 // ---------------------
 
 const player = new Toast(document.getElementById('playerToast'));
+player.show();
 const playerArtwork = document.getElementById('playerArtwork');
 const playerArtworkIdle = document.getElementById('playerArtworkIdle');
 const playerTitle = document.getElementById('playerTitle');
@@ -1519,6 +1529,36 @@ function playheadDragged(event) {
   const percent = (event.clientX - playerBarBox.getBoundingClientRect().x) / playerBarBox.clientWidth;
   setProgressBar(playerBar, percent, secondsToStr(percent * currentPlayingItem.duration));
 }
+
+
+
+// -----------------------
+// ----- View navigation -----
+// -----------------------
+
+const navLinks = document.querySelectorAll('.sidebar .nav-link');
+const appViews = document.querySelectorAll('.app-view');
+
+function switchView(viewId, activeLink = null) {
+  appViews.forEach((view) => view.classList.remove('active'));
+  const view = document.getElementById(viewId);
+  if (!view) {
+    return;
+  }
+  view.classList.add('active');
+  navLinks.forEach((link) => link.classList.toggle('active', activeLink ? link === activeLink : link.dataset.view === viewId));
+}
+
+navLinks.forEach((link) => link.addEventListener('click', (event) => {
+  event.preventDefault();
+  switchView(link.dataset.view, link);
+  if (link.dataset.scrollTarget) {
+    document.getElementById(link.dataset.scrollTarget).scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+}));
+
+// Default to the playlist view.
+switchView('view-playlist');
 
 // -----------------------
 // ----- Application -----

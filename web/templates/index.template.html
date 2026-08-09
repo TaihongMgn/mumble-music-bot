@@ -10,22 +10,49 @@
 
     <link rel="icon" href="static/image/favicon.ico" />
 
-    <link id="pagestyle" rel="stylesheet" href="static/css/main.css">
+    <link id="pagestyle" rel="stylesheet" href="static/css/dark.css">
 </head>
 
 <body>
-    <header class="container page-header mb-5" id="banner">
-        <div class="row">
-            <div class="col-auto">
-                <img src="static/image/logo.png" height="200px"
-                                                 alt="{{ tr('aria_botamusique_logo') }}">
-            </div>
-            <div class="col my-auto">
+    <aside class="sidebar" aria-label="{{ tr('navigation') }}">
+        <div class="sidebar-brand">
+            <img src="static/image/logo.png" width="32" height="32" alt="{{ tr('aria_botamusique_logo') }}">
+            <span>{{ tr('page_title') }}</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-link active" data-view="view-playlist">
+                <i class="fas fa-list" aria-hidden="true"></i>
+                <span>{{ tr('nav_playlist') }}</span>
+            </a>
+            <a href="#" class="nav-link" data-view="view-netease">
+                <i class="fas fa-music" aria-hidden="true"></i>
+                <span>{{ tr('nav_netease') }}</span>
+            </a>
+            <a href="#" class="nav-link" data-view="view-library">
+                <i class="fas fa-folder" aria-hidden="true"></i>
+                <span>{{ tr('nav_library') }}</span>
+            </a>
+            <a href="#" class="nav-link" data-view="view-library" data-scroll-target="upload">
+                <i class="fas fa-upload" aria-hidden="true"></i>
+                <span>{{ tr('nav_upload') }}</span>
+            </a>
+        </nav>
+    </aside>
+
+    <div class="main-content">
+        <header class="app-header" id="banner">
+            <div class="app-header-title">
+                <img src="static/image/logo.png" width="32" height="32"
+                     alt="{{ tr('aria_botamusique_logo') }}">
                 <h1>{{ tr('page_title') }}</h1>
             </div>
-        </div>
-    </header>
+            <button type="button" id="theme-switch-btn" class="floating-button"
+                    aria-label="{{ tr('switch_theme') }}">
+                <i class="fas fa-lightbulb" aria-hidden="true"></i>
+            </button>
+        </header>
 
+        <div id="view-playlist" class="app-view active">
     <main id="playlist" class="container mb-5">
         <div class="btn-toolbar mb-2" role="toolbar" aria-label="{{ tr('playlist_controls') }}">
             <button type="button" id="play-pause-btn" class="btn btn-info mb-2 btn-space" aria-label="{{ tr('play') }}">
@@ -148,7 +175,9 @@
                 <i class="fas fa-trash-alt" aria-hidden="true"></i> {{ tr('clear_playlist') }}</button>
         </div>
     </main>
+        </div>
 
+        <div id="view-netease" class="app-view">
     <div class="container mb-5">
         <div class="card-deck">
             <div id="add-netease" class="card" data-free-label="{{ tr('netease_free') }}" data-vip-label="{{ tr('netease_vip') }}">
@@ -168,7 +197,6 @@
             </div>
         </div>
     </div>
-
     <div class="container mb-5">
         <div id="netease-playlist-card" class="card"
              data-play-all-label="{{ tr('netease_playlist_play_all') }}"
@@ -201,7 +229,6 @@
             </div>
         </div>
     </div>
-
     <div class="container mb-5">
         <div id="netease-account-card" class="card"
              data-not-logged-in-label="{{ tr('netease_not_logged_in') }}"
@@ -214,7 +241,41 @@
             <div class="card-body" id="netease-account-body"></div>
         </div>
     </div>
+    <div class="container mb-5">
+        <div class="card-deck">
+            <div id="add-music-url" class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ tr('add_url') }}</h3>
+                </div>
+                <div class="card-body">
+                    <label for="music-url-input">{{ tr('add_youtube_or_soundcloud_url') }}</label>
+                    <div class="input-group mb-2">
+                        <input class="form-control" type="text" id="music-url-input" placeholder="{{ tr('url_placeholder') }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        {{ tr('add_url') }}
+                    </button>
+                </div>
+            </div>
+            <div id="add-radio-url" class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ tr('add_radio') }}</h3>
+                </div>
+                <div class="card-body">
+                    <label for="radio-url-input">{{ tr('add_radio_url') }}</label>
+                    <div class="input-group mb-2">
+                        <input id="radio-url-input" class="form-control" type="text" placeholder="{{ tr('radio_url_placeholder') }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        {{ tr('add_radio') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
 
+        <div id="view-library" class="app-view">
     <div class="container mb-3">
         <h2 id="forms">{{ tr('music_library') }}</h2>
 
@@ -387,7 +448,6 @@
             </div>
         </div>
     </div>
-
     <div id="upload" class="container mb-3">
         <input type="hidden" id="uploadDisabled" value="false" />
         <div class="card">
@@ -429,61 +489,23 @@
             </div>
         </div>
     </div>
-
-    <div class="container mb-5">
-        <div class="card-deck">
-            <div id="add-music-url" class="card">
-                <div class="card-header">
-                    <h3 class="card-title">{{ tr('add_url') }}</h3>
-                </div>
-                <div class="card-body">
-                    <label for="music-url-input">{{ tr('add_youtube_or_soundcloud_url') }}</label>
-                    <div class="input-group mb-2">
-                        <input class="form-control" type="text" id="music-url-input" placeholder="{{ tr('url_placeholder') }}">
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        {{ tr('add_url') }}
-                    </button>
-                </div>
-            </div>
-            <div id="add-radio-url" class="card">
-                <div class="card-header">
-                    <h3 class="card-title">{{ tr('add_radio') }}</h3>
-                </div>
-                <div class="card-body">
-                    <label for="radio-url-input">{{ tr('add_radio_url') }}</label>
-                    <div class="input-group mb-2">
-                        <input id="radio-url-input" class="form-control" type="text" placeholder="{{ tr('radio_url_placeholder') }}">
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        {{ tr('add_radio') }}
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <div id="player-toast" class="floating-button" style="bottom: 120px;">
+    <button id="player-toast" class="floating-button" type="button" aria-label="{{ tr('mini_player_title') }}" style="display: none;">
         <i class="fas fa-play" aria-hidden="true"></i>
-    </div>
-
-    <div id="theme-switch-btn" class="floating-button" style="bottom: 50px;">
-        <i class="fas fa-lightbulb" aria-hidden="true"></i>
-    </div>
+    </button>
 
     <div id="playerToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-autohide="false">
-        <div class="toast-header">
-            <i class="fas fa-play-circle mr-2 text-primary"></i>
-            <strong class="mr-auto">{{ tr('mini_player_title') }}</strong>
-            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
         <div class="toast-body" id="playerContainer">
             <img id="playerArtworkIdle" src="static/image/empty_box.svg" alt="{{ tr('aria_empty_box') }}" />
             <img id="playerArtwork" src="static/image/unknown-album.png" style="display: none;"
                                                                          alt="{{ tr('aria_default_cover') }}" />
             <div id="playerInfo">
+                <div class="player-track">
+                    <strong id="playerTitle">Song Title</strong>
+                    <span id="playerArtist">Artist</span>
+                </div>
                 <div id="playerActionBox">
                     <button id="playerPlayBtn" class="btn btn-primary btn-sm btn-space" style="display: none"
                                                                                         aria-label="{{ tr('play') }}">
@@ -497,16 +519,15 @@
                         <i class="fas fa-fast-forward"></i>
                     </button>
                 </div>
-
-                <div style="overflow: hidden; max-width: 320px;">
-                    <strong id="playerTitle">Song Title</strong>
-                </div>
-                <span id="playerArtist">Artist</span>
                 <div id="playerBarBox" class="progress">
                     <div id="playerBar" class="progress-bar pr-2" role="progressbar" aria-valuenow="50"
                         aria-valuemin="0" aria-valuemax="100"
                         style="width: 100%; text-align: right; transform: translateX(-100%);"></div>
                 </div>
+            </div>
+            <div class="player-volume" aria-label="{{ tr('volume_slider') }}">
+                <i class="fas fa-volume-up" aria-hidden="true"></i>
+                <input type="range" class="player-volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="{{ tr('volume_slider') }}">
             </div>
         </div>
     </div>

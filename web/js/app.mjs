@@ -1,14 +1,14 @@
 import {library, dom} from '@fortawesome/fontawesome-svg-core/index.es.js';
 import {
   faTimesCircle, faPlus, faCheck, faUpload, faTimes, faTrash, faPlay, faPause, faFastForward, faPlayCircle, faLightbulb,
-  faTrashAlt, faDownload, faSyncAlt, faEdit, faVolumeUp, faVolumeDown, faRobot, faRedo, faRandom, faTasks
+  faTrashAlt, faDownload, faSyncAlt, faEdit, faVolumeUp, faVolumeDown, faRobot, faRedo, faRandom, faTasks, faList, faMusic, faFolder
 } from '@fortawesome/free-solid-svg-icons/index.es.js';
 import {faFileAlt} from '@fortawesome/free-regular-svg-icons/index.es.js';
 
 library.add(
   // Solid
   faTimesCircle, faPlus, faCheck, faUpload, faTimes, faTrash, faPlay, faPause, faFastForward, faPlayCircle, faLightbulb,
-  faTrashAlt, faDownload, faSyncAlt, faEdit, faVolumeUp, faVolumeDown, faRobot, faRedo, faRandom, faTasks,
+  faTrashAlt, faDownload, faSyncAlt, faEdit, faVolumeUp, faVolumeDown, faRobot, faRedo, faRandom, faTasks, faList, faMusic, faFolder,
   // Regular
   faFileAlt
 );

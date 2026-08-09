@@ -3,3 +3,17 @@
 @import '~bootswatch/dist/darkly/bootswatch';
 
 @import './main';
+
+// Dark layout surfaces
+.main-content {
+    background: #222222;
+}
+
+.app-header {
+    background: #222222;
+}
+
+.app-view .card,
+#playlist .btn-toolbar {
+    background-color: #2a2a2a;
+}

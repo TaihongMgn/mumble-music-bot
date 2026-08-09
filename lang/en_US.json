@@ -215,6 +215,12 @@
         "netease_not_logged_in": "Not logged in. Use !yun login in Mumble to scan the QR code.",
         "netease_listening_time": "Total listening time: {hours} hours",
         "netease_nickname": "Account: {name}",
-        "netease_account_error": "Failed to load Netease account information"
+        "netease_account_error": "Failed to load Netease account information",
+        "nav_playlist": "Playlist",
+        "nav_netease": "Netease",
+        "nav_library": "Library",
+        "nav_upload": "Upload",
+        "navigation": "Main navigation",
+        "switch_theme": "Switch theme"
     }
 }

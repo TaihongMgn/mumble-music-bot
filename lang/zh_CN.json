@@ -215,6 +215,12 @@
         "netease_not_logged_in": "未登录，在 Mumble 里发送 !yun login 扫码登录",
         "netease_listening_time": "累计听歌 {hours} 小时",
         "netease_nickname": "账号：{name}",
-        "netease_account_error": "网易云账号信息加载失败"
+        "netease_account_error": "网易云账号信息加载失败",
+        "nav_playlist": "播放列表",
+        "nav_netease": "网易云",
+        "nav_library": "音乐库",
+        "nav_upload": "上传",
+        "navigation": "主导航",
+        "switch_theme": "切换主题"
     }
 }

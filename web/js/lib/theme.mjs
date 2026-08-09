@@ -9,10 +9,13 @@ export default class {
      * Inialize the theme class.
      */
     static init() {
-      // Check LocalStorage for dark theme selection
-      if (localStorage.getItem('darkTheme') === 'true') {
-        // Update page theme
-        this.set(true);
+      // Respect an explicit user choice; otherwise use the stylesheet selected by the template.
+      const storedTheme = localStorage.getItem('darkTheme');
+      if (storedTheme === null) {
+        const stylesheet = document.getElementById('pagestyle').getAttribute('href');
+        this.set(stylesheet.endsWith('/dark.css'));
+      } else {
+        this.set(storedTheme === 'true');
       }
     }
 
