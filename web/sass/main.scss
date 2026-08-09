@@ -1,3 +1,63 @@
+
+/* Small visual refinements */
+.btn {
+    transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.btn:hover:not(:disabled),
+.btn:focus:not(:disabled) {
+    transform: scale(1.03);
+}
+
+.playlist-control-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.playlist-item:not(.d-none):hover {
+    background-color: rgba(77, 163, 255, 0.12) !important;
+}
+
+.card-header .card-title {
+    display: flex;
+    align-items: center;
+}
+
+.netease-search-result {
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.netease-search-result:hover {
+    background-color: rgba(77, 163, 255, 0.08);
+}
+
+.sidebar .nav-link {
+    position: relative;
+    transition: background-color 160ms ease, color 160ms ease, padding-left 160ms ease;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    padding-left: 18px;
+}
+
+.sidebar .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 3px;
+    background: #4da3ff;
+}
+
 .btn-space {
     margin-right: 5px;
 }
@@ -422,11 +482,11 @@ body {
     overflow: hidden;
 }
 
-#view-netease .card-deck {
+.url-card-group {
     display: block;
 }
 
-#view-netease .card-deck > .card {
+.url-card-group > .card {
     margin-right: 0;
     margin-left: 0;
 }

@@ -51,10 +51,10 @@
         <div id="view-playlist" class="app-view active">
     <main id="playlist" class="container mb-5">
         <div class="btn-toolbar mb-2" role="toolbar" aria-label="{{ tr('playlist_controls') }}">
-            <button type="button" id="play-pause-btn" class="btn btn-info mb-2 btn-space" aria-label="{{ tr('play') }}">
+            <button type="button" id="play-pause-btn" class="btn btn-info playlist-control-btn mb-2 btn-space" aria-label="{{ tr('play') }}">
                 <i class="fas fa-play"></i>
             </button>
-            <button type="button" id="fast-forward-btn" class="btn btn-info mb-2" aria-label="{{ tr('skip_track') }}">
+            <button type="button" id="fast-forward-btn" class="btn btn-info playlist-control-btn mb-2" aria-label="{{ tr('skip_track') }}">
                 <i class="fas fa-fast-forward"></i>
             </button>
             <div class="ml-auto">
@@ -63,6 +63,7 @@
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
                         aria-label="{{ tr('change_playback_mode') }}">
                         <i class="fas fa-tasks mr-2" aria-hidden="true" id="modeIndicator"></i>
+                         <i class="fas fa-caret-down" aria-hidden="true"></i>
                     </button>
                     <div class="dropdown-menu" aria-labelledby="play-mode">
                         <a class="dropdown-item" href="#" id="one-shot-mode-btn">
@@ -106,8 +107,8 @@
                     <tr>
                         <th scope="col" class="d-none d-md-table-cell">{{ tr('index') }}</th>
                         <th scope="col" class="w-75">{{ tr('title') }}</th>
-                        <th scope="col" class="d-none d-md-table-cell">{{ tr('url_path') }}</th>
                         <th scope="col">{{ tr('action') }}</th>
+                        <th scope="col" class="d-none d-md-table-cell">{{ tr('url_path') }}</th>
                     </tr>
                 </thead>
                 <tbody id="playlist-table" class="playlist-table">
@@ -146,20 +147,21 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="d-none d-md-table-cell">
-                            <small class="playlist-item-path"></small>
-                        </td>
                         <td>
                             <div class="btn-group">
-                                <button type="button" class="playlist-item-play btn btn-info btn-sm"
+                                <button type="button" class="playlist-item-top btn btn-info btn-sm"
+                                                      title="{{ tr('move_item_next') }}"
                                                       aria-label="{{ tr('aria_skip_current_song') }}">
-                                    <i class="fas fa-play" aria-hidden="true"></i>
+                                    <i class="fas fa-arrow-up" aria-hidden="true"></i>
                                 </button>
                                 <button type="button" class="playlist-item-trash btn btn-danger btn-sm ml-1"
                                                       aria-label="{{ tr('aria_remove_this_song') }}">
                                     <i class="fas fa-trash-alt" aria-hidden="true"></i>
                                 </button>
                             </div>
+                        </td>
+                        <td class="d-none d-md-table-cell">
+                            <small class="playlist-item-path"></small>
                         </td>
                     </tr>
                 </tbody>
@@ -175,10 +177,9 @@
 
         <div id="view-netease" class="app-view">
     <div class="netease-card-wrap">
-        <div class="card-deck">
-            <div id="add-netease" class="card" data-free-label="{{ tr('netease_free') }}" data-vip-label="{{ tr('netease_vip') }}">
+        <div id="add-netease" class="card" data-free-label="{{ tr('netease_free') }}" data-vip-label="{{ tr('netease_vip') }}">
                 <div class="card-header">
-                    <h3 class="card-title">{{ tr('add_netease') }}</h3>
+                    <h3 class="card-title"><i class="fas fa-music mr-2" aria-hidden="true"></i>{{ tr('add_netease') }}</h3>
                 </div>
                 <div class="card-body">
                     <label for="netease-search-input">{{ tr('netease_search_label') }}</label>
@@ -191,7 +192,6 @@
                     <div id="netease-results" class="mt-3"></div>
                 </div>
             </div>
-        </div>
     </div>
     <div class="netease-card-wrap">
         <div id="netease-playlist-card" class="card"
@@ -207,7 +207,7 @@
              data-empty-label="{{ tr('netease_playlist_empty') }}"
              data-song-count-label="{{ tr('netease_playlist_song_count') }}">
             <div class="card-header">
-                <h3 class="card-title">{{ tr('netease_playlist') }}</h3>
+                <h3 class="card-title"><i class="fas fa-list mr-2" aria-hidden="true"></i>{{ tr('netease_playlist') }}</h3>
             </div>
             <div class="card-body">
                 <label for="netease-playlist-input">{{ tr('netease_playlist_input_label') }}</label>
@@ -232,13 +232,13 @@
              data-nickname-label="{{ tr('netease_nickname') }}"
              data-error-label="{{ tr('netease_account_error') }}">
             <div class="card-header">
-                <h3 class="card-title">{{ tr('netease_account') }}</h3>
+                <h3 class="card-title"><i class="fas fa-user-circle mr-2" aria-hidden="true"></i>{{ tr('netease_account') }}</h3>
             </div>
             <div class="card-body" id="netease-account-body"></div>
         </div>
     </div>
     <div class="netease-card-wrap">
-        <div class="card-deck">
+        <div class="url-card-group">
             <div id="add-music-url" class="card">
                 <div class="card-header">
                     <h3 class="card-title">{{ tr('add_url') }}</h3>
@@ -273,7 +273,7 @@
 
         <div id="view-library" class="app-view">
     <div class="container mb-3">
-        <h2 id="forms">{{ tr('music_library') }}</h2>
+        <h2 id="forms"><i class="fas fa-folder mr-2" aria-hidden="true"></i>{{ tr('music_library') }}</h2>
 
         <div class="card mb-3">
             <div class="card-header">
@@ -448,7 +448,7 @@
         <input type="hidden" id="uploadDisabled" value="false" />
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">{{ tr('upload_file') }}</h3>
+                <h3 class="card-title"><i class="fas fa-upload mr-2" aria-hidden="true"></i>{{ tr('upload_file') }}</h3>
             </div>
             <div class="card-body">
                 <form action="./upload" method="post" enctype="multipart/form-data">

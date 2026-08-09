@@ -302,10 +302,10 @@ function checkForPlaylistUpdate() {
 }
 
 function bindPlaylistEvent() {
-  $('.playlist-item-play').unbind().click(
+  $('.playlist-item-top').unbind().click(
       function(e) {
         request('post', {
-          'play_music': ($(e.currentTarget).parent().parent().parent().find('.playlist-item-index').html() - 1),
+          'move_item_next': ($(e.currentTarget).parent().parent().parent().find('.playlist-item-index').html() - 1),
         });
       },
   );
@@ -1187,15 +1187,21 @@ if (neteaseSearchBtn) {
         neteaseResults.textContent = data.error || '';
         return;
       }
-      neteaseResults.innerHTML = (data.songs || []).map((song) => `
-        <div class="d-flex align-items-center mb-2">
-          <div class="flex-grow-1">
-            <div><strong>${escapeNeteaseHtml(song.name)}</strong> - ${escapeNeteaseHtml(song.artist)}</div>
-            <small class="text-muted">${escapeNeteaseHtml(song.fee === 0 ? neteaseCard.dataset.freeLabel : neteaseCard.dataset.vipLabel)}</small>
-          </div>
-          <button type="button" class="btn btn-sm btn-primary ml-2 netease-add-btn" data-id="${escapeNeteaseHtml(song.id)}">+</button>
-        </div>
-      `).join('');
+      neteaseResults.innerHTML = (data.songs || []).map((song) => {
+        const isFree = song.fee === 0;
+        const badgeClass = isFree ? 'badge-success' : 'badge-warning text-dark';
+        const accessLabel = isFree ? neteaseCard.dataset.freeLabel : neteaseCard.dataset.vipLabel;
+        return `
+         <div class="d-flex align-items-center mb-2 netease-search-result">
+           <i class="fas fa-music mr-2 text-muted" aria-hidden="true"></i>
+           <div class="flex-grow-1">
+             <div><strong>${escapeNeteaseHtml(song.name)}</strong> - ${escapeNeteaseHtml(song.artist)}</div>
+             <small class="badge ${badgeClass}">${escapeNeteaseHtml(accessLabel)}</small>
+           </div>
+           <button type="button" class="btn btn-sm btn-primary ml-2 netease-add-btn" data-id="${escapeNeteaseHtml(song.id)}">+</button>
+         </div>
+       `;
+      }).join('');
       neteaseResults.querySelectorAll('.netease-add-btn').forEach((button) => {
         button.addEventListener('click', () => {
           request('post', {add_netease: button.dataset.id});
@@ -1226,7 +1232,7 @@ function renderNeteaseAccount(data) {
   if (!neteaseAccountCard || !neteaseAccountBody) return;
   if (!data.logged_in) {
     neteaseAccountBody.innerHTML = `
-      <div class="text-muted">${neteaseAccountLabel('notLoggedInLabel')}</div>
+      <div class="text-muted"><i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i>${neteaseAccountLabel('notLoggedInLabel')}</div>
     `;
     return;
   }
@@ -1238,8 +1244,8 @@ function renderNeteaseAccount(data) {
     <div class="d-flex align-items-center">
       ${avatar}
       <div>
-        <div>${neteaseAccountLabel('nicknameLabel').replace('{name}', nickname)}</div>
-        <div class="text-muted">${neteaseAccountLabel('listeningTimeLabel').replace('{hours}', hours)}</div>
+        <div><i class="fas fa-user-circle mr-1" aria-hidden="true"></i>${neteaseAccountLabel('nicknameLabel').replace('{name}', nickname)}</div>
+        <div class="text-muted"><i class="fas fa-headphones mr-1" aria-hidden="true"></i>${neteaseAccountLabel('listeningTimeLabel').replace('{hours}', hours)}</div>
       </div>
     </div>
   `;

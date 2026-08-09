@@ -550,6 +550,25 @@ def post():
             else:
                 abort(404)
 
+        elif 'move_item_next' in payload:
+            try:
+                index = int(payload['move_item_next'])
+            except (TypeError, ValueError):
+                abort(400)
+
+            if index < 0 or index >= len(var.playlist):
+                abort(400)
+
+            current = var.playlist.current_index
+            if index != current and index != current + 1:
+                item = var.playlist[index]
+                target = current if index < current else current + 1
+                var.playlist.remove(index)
+                var.playlist.insert(target, item)
+                log.info("web: move playlist item next: " + item.format_debug_string())
+                if not var.bot.is_pause:
+                    var.bot.interrupt()
+
         elif 'add_url' in payload:
             music_wrapper = get_cached_wrapper_from_scrap(type='url', url=payload['add_url'], user=user)
             var.playlist.append(music_wrapper)
