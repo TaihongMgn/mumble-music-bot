@@ -97,7 +97,7 @@ for (const playMode in playModeBtns) {
 
 function request(_url, _data, refresh = false) {
   console.log(_data);
-  $.ajax({
+  return $.ajax({
     type: 'POST',
     url: _url,
     data: _data,
@@ -1193,6 +1193,128 @@ if (neteaseSearchBtn) {
       console.error('Netease search failed', error);
     }
   });
+}
+
+// Netease Cloud Music playlists
+const neteasePlaylistCard = document.getElementById('netease-playlist-card');
+const neteasePlaylistInput = document.getElementById('netease-playlist-input');
+const neteasePlaylistFetchBtn = document.getElementById('netease-playlist-fetch-btn');
+const neteasePlaylistResult = document.getElementById('netease-playlist-result');
+const neteaseSavedPlaylists = document.getElementById('netease-saved-playlists');
+
+function neteasePlaylistLabel(name) {
+  return escapeNeteaseHtml(neteasePlaylistCard.dataset[name] || '');
+}
+
+function renderNeteasePlaylist(playlist) {
+  const songs = playlist.songs || [];
+  const cover = playlist.cover ?
+    `<img src="${escapeNeteaseHtml(playlist.cover)}" width="64" height="64" class="mr-2" alt="">` : '';
+  const songItems = songs.map((song) => {
+    const feeLabel = song.fee === 0 ? neteaseCard.dataset.freeLabel : neteaseCard.dataset.vipLabel;
+    return `<li class="mb-1">${escapeNeteaseHtml(song.name)} - ${escapeNeteaseHtml(song.artist)}
+      <small class="text-muted">(${escapeNeteaseHtml(feeLabel)})</small>
+    </li>`;
+  }).join('');
+  neteasePlaylistResult.innerHTML = `
+    <div class="d-flex align-items-center mb-2">
+      ${cover}
+      <div><strong>${escapeNeteaseHtml(playlist.name)}</strong>
+        <div class="text-muted">${neteasePlaylistLabel('songCountLabel').replace('{count}', songs.length)}</div>
+      </div>
+    </div>
+    <div class="btn-group mb-2">
+      <button type="button" class="btn btn-sm btn-primary netease-playlist-play-all-btn">${neteasePlaylistLabel('playAllLabel')}</button>
+      <button type="button" class="btn btn-sm btn-secondary netease-playlist-save-btn">${neteasePlaylistLabel('saveLabel')}</button>
+    </div>
+    <ol class="pl-4">${songItems}</ol>
+  `;
+  neteasePlaylistResult.querySelector('.netease-playlist-play-all-btn').addEventListener('click', () => {
+    request('post', {play_netease_playlist_url: playlist.id}).done((data) => {
+      if (data.added !== undefined) {
+        neteasePlaylistResult.insertAdjacentHTML('afterbegin',
+          `<div class="alert alert-info">${neteasePlaylistLabel('addedLabel').replace('{count}', data.added)}</div>`);
+      }
+    });
+  });
+  neteasePlaylistResult.querySelector('.netease-playlist-save-btn').addEventListener('click', () => {
+    const savedData = {
+      id: playlist.id,
+      name: playlist.name,
+      cover: playlist.cover,
+      songs: songs.map((song) => ({id: song.id, name: song.name, artist: song.artist})),
+    };
+    request('post', {save_netease_playlist: JSON.stringify(savedData)}).done(() => {
+      neteasePlaylistResult.insertAdjacentHTML('afterbegin',
+        `<div class="alert alert-success">${neteasePlaylistLabel('savedLabel')}</div>`);
+      loadNeteaseSavedPlaylists();
+    });
+  });
+}
+
+async function loadNeteaseSavedPlaylists() {
+  try {
+    const response = await fetch('/api/netease/playlists');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || neteasePlaylistLabel('errorLabel'));
+    const playlists = data.playlists || [];
+    if (!playlists.length) {
+      neteaseSavedPlaylists.textContent = neteasePlaylistCard.dataset.emptyLabel || '';
+      return;
+    }
+    neteaseSavedPlaylists.innerHTML = playlists.map((playlist) => `
+      <div class="d-flex align-items-center mb-2">
+        ${playlist.cover ? `<img src="${escapeNeteaseHtml(playlist.cover)}" width="40" height="40" class="mr-2" alt="">` : ''}
+        <div class="flex-grow-1">${escapeNeteaseHtml(playlist.name)}
+          <small class="text-muted">(${escapeNeteaseHtml(playlist.count)})</small>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary mr-1 netease-saved-play-btn" data-id="${escapeNeteaseHtml(playlist.id)}">${neteasePlaylistLabel('playLabel')}</button>
+        <button type="button" class="btn btn-sm btn-outline-danger netease-saved-delete-btn" data-id="${escapeNeteaseHtml(playlist.id)}">${neteasePlaylistLabel('deleteLabel')}</button>
+      </div>
+    `).join('');
+    neteaseSavedPlaylists.querySelectorAll('.netease-saved-play-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        request('post', {play_netease_playlist: button.dataset.id}).done((result) => {
+          if (result.added !== undefined) {
+            neteaseSavedPlaylists.insertAdjacentHTML('afterbegin',
+              `<div class="alert alert-info">${neteasePlaylistLabel('addedLabel').replace('{count}', result.added)}</div>`);
+          }
+        });
+      });
+    });
+    neteaseSavedPlaylists.querySelectorAll('.netease-saved-delete-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        request('post', {delete_netease_playlist: button.dataset.id}).done(() => {
+          neteaseSavedPlaylists.insertAdjacentHTML('afterbegin',
+            `<div class="alert alert-success">${neteasePlaylistLabel('deletedLabel')}</div>`);
+          loadNeteaseSavedPlaylists();
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Netease saved playlist loading failed', error);
+    neteaseSavedPlaylists.textContent = neteasePlaylistLabel('errorLabel');
+  }
+}
+
+if (neteasePlaylistFetchBtn) {
+  neteasePlaylistFetchBtn.addEventListener('click', async () => {
+    const value = neteasePlaylistInput.value.trim();
+    if (!value) return;
+    try {
+      const response = await fetch(`/api/netease/playlist?url=${encodeURIComponent(value)}`);
+      const data = await response.json();
+      if (!response.ok || !data.id) {
+        neteasePlaylistResult.textContent = data.error || neteasePlaylistLabel('noResultLabel');
+        return;
+      }
+      renderNeteasePlaylist(data);
+    } catch (error) {
+      console.error('Netease playlist loading failed', error);
+      neteasePlaylistResult.textContent = neteasePlaylistLabel('errorLabel');
+    }
+  });
+  loadNeteaseSavedPlaylists();
 }
 
 // ---------------------

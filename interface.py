@@ -10,6 +10,7 @@ import math
 import os
 import os.path
 import errno
+import re
 from typing import Type
 import media
 import json
@@ -351,6 +352,109 @@ def netease_search():
         return jsonify({'songs': [], 'error': tr_web('netease_search_error')}), 502
 
 
+def _extract_netease_playlist_id(value):
+    value = str(value or '').strip()
+    if value.isdigit():
+        return value
+    match = re.search(r'id=(\d+)', value)
+    return match.group(1) if match else None
+
+
+def _get_netease_client_and_cookie():
+    client = NeteaseClient(var.config.get('netease', 'api_url'))
+    cookie_manager = NeteaseCookieManager(
+        var.config.get('netease', 'cookie_file', fallback='config/netease_cookie.txt'))
+    return client, cookie_manager.get_cookie()
+
+
+def _add_netease_tracks(client, cookie, tracks, playlist_user):
+    added = 0
+    skipped = 0
+    should_start_download = False
+    for batch_start in range(0, len(tracks), 50):
+        for track in tracks[batch_start:batch_start + 50]:
+            song_id = track.get('id') if isinstance(track, dict) else None
+            if not song_id:
+                skipped += 1
+                continue
+            try:
+                url = client.get_song_url(song_id, cookie)
+            except (requests.RequestException, ValueError, TypeError):
+                log.warning("Could not add Netease playlist track: %s", song_id)
+                skipped += 1
+                continue
+            if not url:
+                skipped += 1
+                continue
+            title = (track.get('name', '') or '') if isinstance(track, dict) else ''
+            artist = (track.get('artist', '') or '') if isinstance(track, dict) else ''
+            name = f"{title} - {artist}" if title and artist else title
+            try:
+                music_wrapper = get_cached_wrapper_from_scrap(
+                    type='radio', url=url, name=name, user=playlist_user)
+                var.playlist.append(music_wrapper)
+                added += 1
+                if len(var.playlist) == 2:
+                    should_start_download = True
+                log.info("web: add Netease playlist item to playlist: " +
+                         music_wrapper.format_debug_string())
+            except (requests.RequestException, ValueError, TypeError):
+                log.exception("web: could not add Netease playlist track: %s", song_id)
+                skipped += 1
+    if should_start_download:
+        var.bot.async_download_next()
+    return added, skipped
+
+
+@web.route("/api/netease/playlist", methods=['GET'])
+@requires_auth
+def netease_playlist():
+    playlist_id = _extract_netease_playlist_id(request.args.get('id') or request.args.get('url'))
+    if not playlist_id:
+        return jsonify({'error': tr_web('netease_playlist_no_result')}), 400
+    try:
+        client = NeteaseClient(var.config.get('netease', 'api_url'))
+        detail = client.get_playlist_detail(playlist_id)
+        songs = client.get_playlist_tracks(playlist_id)
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: Netease playlist loading failed")
+        return jsonify({'error': tr_web('netease_playlist_error')}), 502
+    if not detail.get('name') and not songs:
+        return jsonify({'error': tr_web('netease_playlist_no_result')}), 404
+    return jsonify({
+        'id': str(detail.get('id') or playlist_id),
+        'name': detail.get('name', ''),
+        'cover': detail.get('cover'),
+        'songs': songs,
+    })
+
+
+@web.route("/api/netease/playlists", methods=['GET'])
+@requires_auth
+def netease_playlists():
+    conn = sqlite3.connect(var.db.db_path)
+    try:
+        rows = conn.execute(
+            "SELECT option, value FROM botamusique WHERE section=? ORDER BY rowid DESC",
+            ('netease_playlists',)).fetchall()
+    finally:
+        conn.close()
+    playlists = []
+    for playlist_id, value in rows:
+        try:
+            playlist = json.loads(value)
+        except (TypeError, ValueError):
+            log.warning("web: invalid saved Netease playlist: %s", playlist_id)
+            continue
+        playlists.append({
+            'id': str(playlist.get('id', playlist_id)),
+            'name': playlist.get('name', ''),
+            'cover': playlist.get('cover'),
+            'count': len(playlist.get('songs') or []),
+        })
+    return jsonify({'playlists': playlists})
+
+
 @web.route("/netease/qr_login.png", methods=['GET'])
 @requires_auth
 def netease_qr_login_image():
@@ -436,6 +540,65 @@ def post():
             log.info("web: add Netease item to playlist: " + music_wrapper.format_debug_string())
             if len(var.playlist) == 2:
                 var.bot.async_download_next()
+
+        elif 'save_netease_playlist' in payload:
+            playlist_payload = payload['save_netease_playlist']
+            if isinstance(playlist_payload, str):
+                try:
+                    playlist_payload = json.loads(playlist_payload)
+                except (TypeError, ValueError):
+                    abort(400)
+            if not isinstance(playlist_payload, dict):
+                abort(400)
+            playlist_id = _extract_netease_playlist_id(playlist_payload.get('id'))
+            songs = playlist_payload.get('songs') or []
+            if not playlist_id or not isinstance(songs, list):
+                abort(400)
+            saved_playlist = {
+                'id': playlist_id,
+                'name': str(playlist_payload.get('name') or ''),
+                'cover': playlist_payload.get('cover'),
+                'saved_at': int(time.time()),
+                'songs': [
+                    {
+                        'id': str(song.get('id')),
+                        'name': str(song.get('name') or ''),
+                        'artist': str(song.get('artist') or ''),
+                    }
+                    for song in songs
+                    if isinstance(song, dict) and song.get('id') is not None
+                ],
+            }
+            var.db.set('netease_playlists', playlist_id, json.dumps(saved_playlist, ensure_ascii=False))
+            return jsonify({'ok': True})
+
+        elif 'play_netease_playlist' in payload or 'play_netease_playlist_url' in payload:
+            playlist_id = payload.get('play_netease_playlist') or payload.get('play_netease_playlist_url')
+            playlist_id = _extract_netease_playlist_id(playlist_id)
+            if not playlist_id:
+                abort(400)
+            try:
+                client, cookie = _get_netease_client_and_cookie()
+                if 'play_netease_playlist' in payload:
+                    saved_value = var.db.get('netease_playlists', playlist_id, fallback=None)
+                    if not saved_value:
+                        return jsonify({'error': tr_web('netease_playlist_no_result')}), 404
+                    saved_playlist = json.loads(saved_value)
+                    tracks = saved_playlist.get('songs') or []
+                else:
+                    tracks = client.get_playlist_tracks(playlist_id)
+                added, skipped = _add_netease_tracks(client, cookie, tracks, user)
+            except (requests.RequestException, ValueError, TypeError):
+                log.exception("web: Netease playlist playback failed")
+                return jsonify({'error': tr_web('netease_playlist_error')}), 502
+            return jsonify({'added': added, 'skipped': skipped})
+
+        elif 'delete_netease_playlist' in payload:
+            playlist_id = _extract_netease_playlist_id(payload['delete_netease_playlist'])
+            if not playlist_id:
+                abort(400)
+            var.db.remove_option('netease_playlists', playlist_id)
+            return jsonify({'ok': True})
 
         elif 'delete_music' in payload:
             music_wrapper = var.playlist[int(payload['delete_music'])]

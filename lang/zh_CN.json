@@ -194,6 +194,22 @@
         "search": "搜索",
         "netease_search_error": "网易云音乐搜索失败，请稍后重试。",
         "netease_free": "免费",
-        "netease_vip": "VIP/需登录"
+        "netease_vip": "VIP/需登录",
+        "netease_playlist": "网易云歌单",
+        "netease_playlist_input_label": "输入歌单链接或ID",
+        "netease_playlist_placeholder": "歌单链接或ID...",
+        "netease_playlist_fetch": "获取歌单",
+        "netease_saved_playlists": "已保存的歌单",
+        "netease_playlist_play_all": "播放全部",
+        "netease_playlist_save": "保存歌单",
+        "netease_playlist_play": "播放",
+        "netease_playlist_delete": "删除",
+        "netease_playlist_no_result": "未找到歌单",
+        "netease_playlist_error": "获取歌单失败",
+        "netease_playlist_saved": "歌单已保存",
+        "netease_playlist_deleted": "歌单已删除",
+        "netease_playlist_added": "已添加 {count} 首歌曲",
+        "netease_playlist_empty": "没有已保存的歌单",
+        "netease_playlist_song_count": "{count} 首歌曲"
     }
 }

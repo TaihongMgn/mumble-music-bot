@@ -90,8 +90,22 @@ class NeteaseClient:
                     "id": item["id"],
                     "name": item["name"],
                     "artist": item["artist"],
+                    "fee": item["fee"],
                 })
         return result
+
+    def get_playlist_detail(self, playlist_id):
+        payload = self._get("/playlist/detail", {"id": playlist_id})
+        playlist = payload.get("playlist") or {}
+        return {
+            "id": playlist.get("id", playlist_id),
+            "name": playlist.get("name", ""),
+            "cover": playlist.get("coverImgUrl"),
+            "trackCount": playlist.get("trackCount", 0),
+            "playCount": playlist.get("playCount", 0),
+            "description": playlist.get("description", ""),
+            "creator": (playlist.get("creator") or {}).get("nickname", ""),
+        }
 
     def get_song_detail(self, song_id):
         payload = self._get("/song/detail", {"ids": song_id})

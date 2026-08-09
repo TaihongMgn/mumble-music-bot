@@ -194,6 +194,22 @@
         "search": "Search",
         "netease_search_error": "Netease Cloud Music search failed. Please try again.",
         "netease_free": "Free",
-        "netease_vip": "VIP/login required"
+        "netease_vip": "VIP/login required",
+        "netease_playlist": "Netease Playlist",
+        "netease_playlist_input_label": "Enter playlist URL or ID",
+        "netease_playlist_placeholder": "Playlist URL or ID...",
+        "netease_playlist_fetch": "Fetch Playlist",
+        "netease_saved_playlists": "Saved Playlists",
+        "netease_playlist_play_all": "Play All",
+        "netease_playlist_save": "Save Playlist",
+        "netease_playlist_play": "Play",
+        "netease_playlist_delete": "Delete",
+        "netease_playlist_no_result": "Playlist not found",
+        "netease_playlist_error": "Failed to fetch playlist",
+        "netease_playlist_saved": "Playlist saved",
+        "netease_playlist_deleted": "Playlist deleted",
+        "netease_playlist_added": "Added {count} songs",
+        "netease_playlist_empty": "No saved playlists",
+        "netease_playlist_song_count": "{count} songs"
     }
 }
