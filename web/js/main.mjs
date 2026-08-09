@@ -31,7 +31,6 @@ const pl_id_element = $('.playlist-item-id');
 const pl_index_element = $('.playlist-item-index');
 const pl_title_element = $('.playlist-item-title');
 const pl_artist_element = $('.playlist-item-artist');
-const pl_thumb_element = $('.playlist-item-thumbnail');
 const pl_type_element = $('.playlist-item-type');
 const pl_path_element = $('.playlist-item-path');
 
@@ -126,8 +125,6 @@ function addPlaylistItem(item) {
   pl_index_element.html(item.index + 1);
   pl_title_element.html(item.title);
   pl_artist_element.html(item.artist);
-  pl_thumb_element.attr('src', item.thumbnail);
-  pl_thumb_element.attr('alt', limitChars(item.title));
   pl_type_element.html(item.type);
   pl_path_element.html(item.path);
 
@@ -207,6 +204,7 @@ function displayPlaylist(data) {
       }
     }
 
+    playlist_current_index = data.current_index;
     displayActiveItem(data.current_index);
     updatePlayerInfo(playlist_items[data.current_index]);
     bindPlaylistEvent();
@@ -282,6 +280,7 @@ function checkForPlaylistUpdate() {
         if (data.current_index !== playlist_current_index) {
           if (data.current_index !== -1) {
             if ((data.current_index > playlist_range_to || data.current_index < playlist_range_from)) {
+              playlist_current_index = data.current_index;
               playlist_range_from = 0;
               playlist_range_to = 0;
               updatePlaylist();
@@ -1181,10 +1180,9 @@ if (neteaseSearchBtn) {
       }
       neteaseResults.innerHTML = (data.songs || []).map((song) => `
         <div class="d-flex align-items-center mb-2">
-          <img src="${escapeNeteaseHtml(song.cover || '')}" width="40" height="40" class="mr-2" alt="">
           <div class="flex-grow-1">
-            <div>${escapeNeteaseHtml(song.name)} - ${escapeNeteaseHtml(song.artist)}</div>
-            <small class="text-muted">${song.fee === 0 ? neteaseCard.dataset.freeLabel : neteaseCard.dataset.vipLabel}</small>
+            <div><strong>${escapeNeteaseHtml(song.name)}</strong> - ${escapeNeteaseHtml(song.artist)}</div>
+            <small class="text-muted">${escapeNeteaseHtml(song.fee === 0 ? neteaseCard.dataset.freeLabel : neteaseCard.dataset.vipLabel)}</small>
           </div>
           <button type="button" class="btn btn-sm btn-primary ml-2 netease-add-btn" data-id="${escapeNeteaseHtml(song.id)}">+</button>
         </div>
@@ -1206,6 +1204,50 @@ const neteasePlaylistInput = document.getElementById('netease-playlist-input');
 const neteasePlaylistFetchBtn = document.getElementById('netease-playlist-fetch-btn');
 const neteasePlaylistResult = document.getElementById('netease-playlist-result');
 const neteaseSavedPlaylists = document.getElementById('netease-saved-playlists');
+
+// Netease Cloud Music account and listening time
+const neteaseAccountCard = document.getElementById('netease-account-card');
+const neteaseAccountBody = document.getElementById('netease-account-body');
+
+function neteaseAccountLabel(name) {
+  return escapeNeteaseHtml(neteaseAccountCard.dataset[name] || '');
+}
+
+function renderNeteaseAccount(data) {
+  if (!neteaseAccountCard || !neteaseAccountBody) return;
+  if (!data.logged_in) {
+    neteaseAccountBody.innerHTML = `
+      <div class="text-muted">${neteaseAccountLabel('notLoggedInLabel')}</div>
+    `;
+    return;
+  }
+  const nickname = escapeNeteaseHtml(data.nickname || '');
+  const avatar = data.avatar ?
+    `<img src="${escapeNeteaseHtml(data.avatar)}" width="40" height="40" class="rounded-circle mr-2" alt="">` : '';
+  const hours = Number(data.listening_hours || 0).toFixed(1);
+  neteaseAccountBody.innerHTML = `
+    <div class="d-flex align-items-center">
+      ${avatar}
+      <div>
+        <div>${neteaseAccountLabel('nicknameLabel').replace('{name}', nickname)}</div>
+        <div class="text-muted">${neteaseAccountLabel('listeningTimeLabel').replace('{hours}', hours)}</div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadNeteaseAccount() {
+  if (!neteaseAccountCard || !neteaseAccountBody) return;
+  try {
+    const response = await fetch('/api/netease/account');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Netease account loading failed');
+    renderNeteaseAccount(data);
+  } catch (error) {
+    console.error('Netease account loading failed', error);
+    neteaseAccountBody.textContent = neteaseAccountLabel('errorLabel');
+  }
+}
 
 function refreshPlaylistAfterNeteasePlayback() {
   playlist_ver = -1;
@@ -1242,6 +1284,7 @@ function renderNeteasePlaylist(playlist) {
   neteasePlaylistResult.querySelector('.netease-playlist-play-all-btn').addEventListener('click', () => {
     request('post', {play_netease_playlist_url: playlist.id}).done((data) => {
       refreshPlaylistAfterNeteasePlayback();
+      loadNeteaseAccount();
       if (data.added !== undefined) {
         neteasePlaylistResult.insertAdjacentHTML('afterbegin',
           `<div class="alert alert-info">${neteasePlaylistLabel('addedLabel').replace('{count}', data.added)}</div>`);
@@ -1253,7 +1296,12 @@ function renderNeteasePlaylist(playlist) {
       id: playlist.id,
       name: playlist.name,
       cover: playlist.cover,
-      songs: songs.map((song) => ({id: song.id, name: song.name, artist: song.artist})),
+      songs: songs.map((song) => ({
+        id: song.id,
+        name: song.name,
+        artist: song.artist,
+        duration: song.duration,
+      })),
     };
     request('post', {save_netease_playlist: JSON.stringify(savedData)}).done(() => {
       neteasePlaylistResult.insertAdjacentHTML('afterbegin',
@@ -1287,6 +1335,7 @@ async function loadNeteaseSavedPlaylists() {
       button.addEventListener('click', () => {
         request('post', {play_netease_playlist: button.dataset.id}).done((result) => {
           refreshPlaylistAfterNeteasePlayback();
+          loadNeteaseAccount();
           if (result.added !== undefined) {
             neteaseSavedPlaylists.insertAdjacentHTML('afterbegin',
               `<div class="alert alert-info">${neteasePlaylistLabel('addedLabel').replace('{count}', result.added)}</div>`);
@@ -1321,6 +1370,7 @@ if (neteasePlaylistFetchBtn) {
         return;
       }
       renderNeteasePlaylist(data);
+      loadNeteaseAccount();
     } catch (error) {
       console.error('Netease playlist loading failed', error);
       neteasePlaylistResult.textContent = neteasePlaylistLabel('errorLabel');
@@ -1328,6 +1378,8 @@ if (neteasePlaylistFetchBtn) {
   });
   loadNeteaseSavedPlaylists();
 }
+
+loadNeteaseAccount();
 
 // ---------------------
 // ------  Player ------

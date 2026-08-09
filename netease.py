@@ -90,9 +90,45 @@ class NeteaseClient:
                     "id": item["id"],
                     "name": item["name"],
                     "artist": item["artist"],
+                    "duration": item["duration"],
                     "fee": item["fee"],
                 })
         return result
+
+    def login_status(self, cookie=None):
+        if not cookie:
+            return None
+
+        try:
+            payload = self._get("/login/status", {"cookie": cookie})
+            data = payload.get("data") or payload
+            profile = data.get("profile") if isinstance(data, dict) else None
+            account = data.get("account") if isinstance(data, dict) else None
+            if isinstance(profile, dict) or isinstance(account, dict):
+                return {
+                    "logged_in": bool(profile or account),
+                    "profile": profile or {},
+                    "account": account or {},
+                }
+        except (requests.RequestException, ValueError, TypeError):
+            log.warning("Netease login status endpoint failed", exc_info=True)
+
+        return self.user_account(cookie)
+
+    def user_account(self, cookie=None):
+        if not cookie:
+            return None
+        payload = self._get("/user/account", {"cookie": cookie})
+        data = payload.get("data") or payload
+        if not isinstance(data, dict):
+            return None
+        account = data.get("account") or {}
+        profile = data.get("profile") or {}
+        return {
+            "logged_in": bool(account or profile),
+            "profile": profile if isinstance(profile, dict) else {},
+            "account": account if isinstance(account, dict) else {},
+        }
 
     def get_playlist_detail(self, playlist_id):
         payload = self._get("/playlist/detail", {"id": playlist_id})

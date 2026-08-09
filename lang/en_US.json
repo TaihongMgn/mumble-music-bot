@@ -210,6 +210,11 @@
         "netease_playlist_deleted": "Playlist deleted",
         "netease_playlist_added": "Added {count} songs",
         "netease_playlist_empty": "No saved playlists",
-        "netease_playlist_song_count": "{count} songs"
+        "netease_playlist_song_count": "{count} songs",
+        "netease_account": "Netease Account",
+        "netease_not_logged_in": "Not logged in. Use !yun login in Mumble to scan the QR code.",
+        "netease_listening_time": "Total listening time: {hours} hours",
+        "netease_nickname": "Account: {name}",
+        "netease_account_error": "Failed to load Netease account information"
     }
 }

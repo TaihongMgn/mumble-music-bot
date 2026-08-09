@@ -367,9 +367,50 @@ def _get_netease_client_and_cookie():
     return client, cookie_manager.get_cookie()
 
 
+@web.route("/api/netease/account", methods=['GET'])
+@requires_auth
+def netease_account():
+    try:
+        client, cookie = _get_netease_client_and_cookie()
+        status = client.login_status(cookie) if cookie else None
+        profile = (status or {}).get('profile') or {}
+        account = (status or {}).get('account') or {}
+        try:
+            listening_seconds = int(float(
+                var.db.get('netease', 'total_listening_seconds', fallback='0') or 0))
+        except (TypeError, ValueError):
+            listening_seconds = 0
+        return jsonify({
+            'logged_in': bool(status and status.get('logged_in')),
+            'nickname': profile.get('nickname') or account.get('nickname') or '',
+            'avatar': profile.get('avatarUrl') or profile.get('avatar') or None,
+            'listening_seconds': listening_seconds,
+            'listening_hours': round(listening_seconds / 3600, 1),
+        })
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: Netease account loading failed")
+        return jsonify({'error': 'Netease account loading failed'}), 502
+
+
+
+def _add_netease_listening_time(duration_ms):
+    try:
+        seconds = int(round(float(duration_ms or 0) / 1000))
+    except (TypeError, ValueError):
+        return
+    if seconds <= 0:
+        return
+    try:
+        total = int(float(var.db.get('netease', 'total_listening_seconds', fallback='0') or 0))
+    except (TypeError, ValueError):
+        total = 0
+    var.db.set('netease', 'total_listening_seconds', str(total + seconds))
+
+
 def _add_netease_tracks(client, cookie, tracks, playlist_user):
     added = 0
     skipped = 0
+    duration_ms_total = 0
     should_start_download = False
     for batch_start in range(0, len(tracks), 50):
         for track in tracks[batch_start:batch_start + 50]:
@@ -394,6 +435,10 @@ def _add_netease_tracks(client, cookie, tracks, playlist_user):
                     type='radio', url=url, name=name, user=playlist_user)
                 var.playlist.append(music_wrapper)
                 added += 1
+                try:
+                    duration_ms_total += float(track.get('duration') or 0)
+                except (TypeError, ValueError):
+                    pass
                 if len(var.playlist) == 2:
                     should_start_download = True
                 log.info("web: add Netease playlist item to playlist: " +
@@ -403,6 +448,8 @@ def _add_netease_tracks(client, cookie, tracks, playlist_user):
                 skipped += 1
     if should_start_download:
         var.bot.async_download_next()
+    if duration_ms_total > 0:
+        _add_netease_listening_time(duration_ms_total)
     return added, skipped
 
 
@@ -537,6 +584,8 @@ def post():
                 abort(400)
             music_wrapper = get_cached_wrapper_from_scrap(type='radio', url=url, name=name, user=user)
             var.playlist.append(music_wrapper)
+            if detail:
+                _add_netease_listening_time(detail.get('duration'))
             log.info("web: add Netease item to playlist: " + music_wrapper.format_debug_string())
             if len(var.playlist) == 2:
                 var.bot.async_download_next()
@@ -564,6 +613,7 @@ def post():
                         'id': str(song.get('id')),
                         'name': str(song.get('name') or ''),
                         'artist': str(song.get('artist') or ''),
+                        'duration': song.get('duration'),
                     }
                     for song in songs
                     if isinstance(song, dict) and song.get('id') is not None

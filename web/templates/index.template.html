@@ -82,7 +82,7 @@
                 <thead>
                     <tr>
                         <th scope="col" class="d-none d-md-table-cell">{{ tr('index') }}</th>
-                        <th scope="col" class="w-50">{{ tr('title') }}</th>
+                        <th scope="col" class="w-75">{{ tr('title') }}</th>
                         <th scope="col" class="d-none d-md-table-cell">{{ tr('url_path') }}</th>
                         <th scope="col">{{ tr('action') }}</th>
                     </tr>
@@ -109,10 +109,6 @@
                         <th scope="row" class="playlist-item-index d-none d-md-table-cell">1</th>
                         <td>
                             <input hidden type="hidden" class="playlist-item-id" value="" />
-                            <div class="float-left">
-                                <img width="80" class="playlist-item-thumbnail" src="static/image/unknown-album.png"
-                                                                                alt="{{ tr('aria_default_cover') }}" />
-                            </div>
                             <div class="playlist-artwork">
                                 <b class="playlist-item-title"></b>
                                 <span class="playlist-item-type badge badge-secondary"></span>
@@ -203,6 +199,19 @@
                 <h5>{{ tr('netease_saved_playlists') }}</h5>
                 <div id="netease-saved-playlists" class="mt-2"></div>
             </div>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <div id="netease-account-card" class="card"
+             data-not-logged-in-label="{{ tr('netease_not_logged_in') }}"
+             data-listening-time-label="{{ tr('netease_listening_time') }}"
+             data-nickname-label="{{ tr('netease_nickname') }}"
+             data-error-label="{{ tr('netease_account_error') }}">
+            <div class="card-header">
+                <h3 class="card-title">{{ tr('netease_account') }}</h3>
+            </div>
+            <div class="card-body" id="netease-account-body"></div>
         </div>
     </div>
 

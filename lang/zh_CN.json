@@ -210,6 +210,11 @@
         "netease_playlist_deleted": "歌单已删除",
         "netease_playlist_added": "已添加 {count} 首歌曲",
         "netease_playlist_empty": "没有已保存的歌单",
-        "netease_playlist_song_count": "{count} 首歌曲"
+        "netease_playlist_song_count": "{count} 首歌曲",
+        "netease_account": "网易云账号",
+        "netease_not_logged_in": "未登录，在 Mumble 里发送 !yun login 扫码登录",
+        "netease_listening_time": "累计听歌 {hours} 小时",
+        "netease_nickname": "账号：{name}",
+        "netease_account_error": "网易云账号信息加载失败"
     }
 }
