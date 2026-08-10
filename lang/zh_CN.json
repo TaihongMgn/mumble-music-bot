@@ -117,7 +117,7 @@
         "netease_requires_login": "需要登录/VIP"
     },
     "web": {
-        "login_title": "登录 Botamusique",
+        "login_title": "登录 FX Music Panel",
         "username": "用户名",
         "password": "密码",
         "login_btn": "登录",
@@ -145,7 +145,7 @@
         "add_url": "添加URL",
         "add_youtube_or_soundcloud_url": "添加Youtube或Soundcloud URL",
         "are_you_really_sure": "你真的确定吗？",
-        "aria_botamusique_logo": "Botamusique的Logo",
+        "aria_botamusique_logo": "FX Music Panel 的Logo",
         "aria_default_cover": "默认专辑封面图片：黑色背景上的两个音符。",
         "aria_empty_box": "空。",
         "aria_remove_this_song": "从当前播放列表中移除该曲目。",

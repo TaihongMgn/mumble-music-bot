@@ -117,7 +117,7 @@
         "netease_requires_login": "Login/VIP required"
     },
     "web": {
-        "login_title": "Botamusique Login",
+        "login_title": "FX Music Panel Login",
         "username": "Username",
         "password": "Password",
         "login_btn": "Log in",
@@ -145,7 +145,7 @@
         "add_url": "Add URL",
         "add_youtube_or_soundcloud_url": "Add Youtube or Soundcloud URL",
         "are_you_really_sure": "Are you really sure?",
-        "aria_botamusique_logo": "Botamusique Logo: a fox with two headphones, enjoying the music",
+        "aria_botamusique_logo": "FX Music Panel logo",
         "aria_default_cover": "A black square with two eighth notes beamed together.",
         "aria_empty_box": "A drawing of an empty box.",
         "aria_remove_this_song": "Remove this song from the current playlist",
