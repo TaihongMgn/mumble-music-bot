@@ -1236,7 +1236,17 @@ const neteaseQrLoginStatus = document.getElementById('neteaseQrLoginStatus');
 let neteaseQrPollTimer = null;
 let neteaseQrTimeoutTimer = null;
 let neteaseQrChecking = false;
-let neteaseQrCurrentKey = null;
+
+function neteaseQrGetKey() {
+  return neteaseQrLoginModalElement ? (neteaseQrLoginModalElement.dataset.qrKey || null) : null;
+}
+
+function neteaseQrSetKey(key) {
+  if (neteaseQrLoginModalElement) {
+    if (key) neteaseQrLoginModalElement.dataset.qrKey = key;
+    else delete neteaseQrLoginModalElement.dataset.qrKey;
+  }
+}
 
 function stopNeteaseQrPolling() {
   if (neteaseQrPollTimer) {
@@ -1248,7 +1258,6 @@ function stopNeteaseQrPolling() {
     neteaseQrTimeoutTimer = null;
   }
   neteaseQrChecking = false;
-  neteaseQrCurrentKey = null;
 }
 
 function setNeteaseQrStatus(text) {
@@ -1269,24 +1278,26 @@ async function checkNeteaseQrLogin(key) {
       setNeteaseQrStatus(neteaseAccountLabel('qrScannedLabel'));
     } else if (code === 803) {
       stopNeteaseQrPolling();
+      neteaseQrSetKey(null);
       setNeteaseQrStatus(neteaseAccountLabel('qrSuccessLabel'));
       if (neteaseQrLoginModal) neteaseQrLoginModal.hide();
       loadNeteaseAccount();
     } else {
       stopNeteaseQrPolling();
+      neteaseQrSetKey(null);
       setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
     }
   } catch (error) {
-    console.error('Netease QR login check failed', error);
-    stopNeteaseQrPolling();
-    setNeteaseQrStatus(error.message || neteaseAccountLabel('qrExpiredLabel'));
+    // 网络抖动/API 慢时不要终止轮询，下一次 2 秒后再试
+    console.warn('Netease QR login check failed, will retry', error);
   } finally {
     neteaseQrChecking = false;
   }
 }
 
 async function startNeteaseQrLogin() {
-  if (!neteaseQrLoginModal || neteaseQrPollTimer) return;
+  if (!neteaseQrLoginModal) return;
+  if (neteaseQrPollTimer) stopNeteaseQrPolling();
   try {
     const response = await fetch('/api/netease/qr_start', {method: 'POST'});
     const data = await response.json();
@@ -1295,11 +1306,12 @@ async function startNeteaseQrLogin() {
     }
     neteaseQrLoginImage.src = data.qr_url;
     setNeteaseQrStatus(neteaseAccountLabel('qrWaitingLabel'));
-    neteaseQrCurrentKey = data.key;
+    neteaseQrSetKey(data.key);
     neteaseQrLoginModal.show();
     neteaseQrPollTimer = setInterval(() => checkNeteaseQrLogin(data.key), 2000);
     neteaseQrTimeoutTimer = setTimeout(() => {
       stopNeteaseQrPolling();
+      neteaseQrSetKey(null);
       setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
     }, 300000);
   } catch (error) {
@@ -1309,8 +1321,11 @@ async function startNeteaseQrLogin() {
 }
 
 async function confirmNeteaseQrLogin() {
-  const key = neteaseQrCurrentKey;
-  if (!key) return;
+  const key = neteaseQrGetKey();
+  if (!key) {
+    setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
+    return;
+  }
   const btn = document.getElementById('neteaseQrConfirmBtn');
   if (btn) btn.disabled = true;
   try {
@@ -1318,6 +1333,7 @@ async function confirmNeteaseQrLogin() {
     const data = await response.json();
     if (Number(data.code) === 803) {
       stopNeteaseQrPolling();
+      neteaseQrSetKey(null);
       setNeteaseQrStatus(neteaseAccountLabel('qrSuccessLabel'));
       if (neteaseQrLoginModal) neteaseQrLoginModal.hide();
       loadNeteaseAccount();
@@ -1335,6 +1351,13 @@ async function confirmNeteaseQrLogin() {
 const neteaseQrConfirmBtn = document.getElementById('neteaseQrConfirmBtn');
 if (neteaseQrConfirmBtn) {
   neteaseQrConfirmBtn.addEventListener('click', confirmNeteaseQrLogin);
+}
+
+// 手动关闭弹窗时停止轮询，避免后台继续请求
+if (neteaseQrLoginModalElement) {
+  neteaseQrLoginModalElement.addEventListener('hidden.bs.modal', function() {
+    stopNeteaseQrPolling();
+  });
 }
 
 async function logoutNeteaseAccount(button) {
