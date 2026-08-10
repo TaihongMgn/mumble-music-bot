@@ -394,6 +394,7 @@ const filters = {
   file: $('#filter-type-file'),
   url: $('#filter-type-url'),
   radio: $('#filter-type-radio'),
+  netease: $('#filter-type-netease'),
 };
 const filter_dir = $('#filter-dir');
 const filter_keywords = $('#filter-keywords');
@@ -1228,27 +1229,126 @@ function neteaseAccountLabel(name) {
   return escapeNeteaseHtml(neteaseAccountCard.dataset[name] || '');
 }
 
+const neteaseQrLoginModalElement = document.getElementById('neteaseQrLoginModal');
+const neteaseQrLoginModal = neteaseQrLoginModalElement ? new Modal(neteaseQrLoginModalElement) : null;
+const neteaseQrLoginImage = document.getElementById('neteaseQrLoginImage');
+const neteaseQrLoginStatus = document.getElementById('neteaseQrLoginStatus');
+let neteaseQrPollTimer = null;
+let neteaseQrTimeoutTimer = null;
+let neteaseQrChecking = false;
+
+function stopNeteaseQrPolling() {
+  if (neteaseQrPollTimer) {
+    clearInterval(neteaseQrPollTimer);
+    neteaseQrPollTimer = null;
+  }
+  if (neteaseQrTimeoutTimer) {
+    clearTimeout(neteaseQrTimeoutTimer);
+    neteaseQrTimeoutTimer = null;
+  }
+  neteaseQrChecking = false;
+}
+
+function setNeteaseQrStatus(text) {
+  if (neteaseQrLoginStatus) neteaseQrLoginStatus.textContent = text;
+}
+
+async function checkNeteaseQrLogin(key) {
+  if (neteaseQrChecking) return;
+  neteaseQrChecking = true;
+  try {
+    const response = await fetch('/api/netease/qr_check?key=' + encodeURIComponent(key));
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Netease QR login check failed');
+    const code = Number(data.code);
+    if (code === 801) {
+      setNeteaseQrStatus(neteaseAccountLabel('qrWaitingLabel'));
+    } else if (code === 802) {
+      setNeteaseQrStatus(neteaseAccountLabel('qrScannedLabel'));
+    } else if (code === 803) {
+      stopNeteaseQrPolling();
+      setNeteaseQrStatus(neteaseAccountLabel('qrSuccessLabel'));
+      if (neteaseQrLoginModal) neteaseQrLoginModal.hide();
+      loadNeteaseAccount();
+    } else {
+      stopNeteaseQrPolling();
+      setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
+    }
+  } catch (error) {
+    console.error('Netease QR login check failed', error);
+    stopNeteaseQrPolling();
+    setNeteaseQrStatus(error.message || neteaseAccountLabel('qrExpiredLabel'));
+  } finally {
+    neteaseQrChecking = false;
+  }
+}
+
+async function startNeteaseQrLogin() {
+  if (!neteaseQrLoginModal || neteaseQrPollTimer) return;
+  try {
+    const response = await fetch('/api/netease/qr_start', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || !data.key || !data.qr_url) {
+      throw new Error(data.error || 'Could not create Netease login QR code');
+    }
+    neteaseQrLoginImage.src = data.qr_url;
+    setNeteaseQrStatus(neteaseAccountLabel('qrWaitingLabel'));
+    neteaseQrLoginModal.show();
+    neteaseQrPollTimer = setInterval(() => checkNeteaseQrLogin(data.key), 2000);
+    neteaseQrTimeoutTimer = setTimeout(() => {
+      stopNeteaseQrPolling();
+      setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
+    }, 300000);
+  } catch (error) {
+    console.error('Netease QR login start failed', error);
+    setNeteaseQrStatus(error.message || neteaseAccountLabel('qrExpiredLabel'));
+  }
+}
+
+async function logoutNeteaseAccount(button) {
+  if (!window.confirm(neteaseAccountCard.dataset.logoutConfirm || 'Are you sure to logout from Netease?')) return;
+  button.disabled = true;
+  try {
+    const response = await fetch('/api/netease/logout', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Netease logout failed');
+    await loadNeteaseAccount();
+  } catch (error) {
+    console.error('Netease logout failed', error);
+    button.disabled = false;
+  }
+}
+
 function renderNeteaseAccount(data) {
   if (!neteaseAccountCard || !neteaseAccountBody) return;
   if (!data.logged_in) {
-    neteaseAccountBody.innerHTML = `
-      <div class="text-muted"><i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i>${neteaseAccountLabel('notLoggedInLabel')}</div>
-    `;
+    neteaseAccountBody.innerHTML =
+      '<div class="text-muted mb-2"><i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i>' +
+      neteaseAccountLabel('notLoggedInLabel') + '</div>' +
+      '<button type="button" class="btn btn-sm btn-primary netease-login-btn">' +
+      '<i class="fas fa-qrcode mr-1" aria-hidden="true"></i>' +
+      neteaseAccountLabel('loginBtnLabel') + '</button>';
+    neteaseAccountBody.querySelector('.netease-login-btn').addEventListener('click', startNeteaseQrLogin);
     return;
   }
   const nickname = escapeNeteaseHtml(data.nickname || '');
   const avatar = data.avatar ?
-    `<img src="${escapeNeteaseHtml(data.avatar)}" width="40" height="40" class="rounded-circle mr-2" alt="">` : '';
+    '<img src="' + escapeNeteaseHtml(data.avatar) + '" width="40" height="40" class="rounded-circle mr-2" alt="">' : '';
   const hours = Number(data.listening_hours || 0).toFixed(1);
-  neteaseAccountBody.innerHTML = `
-    <div class="d-flex align-items-center">
-      ${avatar}
-      <div>
-        <div><i class="fas fa-user-circle mr-1" aria-hidden="true"></i>${neteaseAccountLabel('nicknameLabel').replace('{name}', nickname)}</div>
-        <div class="text-muted"><i class="fas fa-headphones mr-1" aria-hidden="true"></i>${neteaseAccountLabel('listeningTimeLabel').replace('{hours}', hours)}</div>
-      </div>
-    </div>
-  `;
+  neteaseAccountBody.innerHTML =
+    '<div class="d-flex align-items-center">' +
+      avatar +
+      '<div><div><i class="fas fa-user-circle mr-1" aria-hidden="true"></i>' +
+        neteaseAccountLabel('nicknameLabel').replace('{name}', nickname) + '</div>' +
+        '<div class="text-muted"><i class="fas fa-headphones mr-1" aria-hidden="true"></i>' +
+        neteaseAccountLabel('listeningTimeLabel').replace('{hours}', hours) + '</div></div>' +
+    '</div>' +
+    '<button type="button" class="btn btn-sm btn-outline-secondary mt-3 netease-logout-btn">' +
+      '<i class="fas fa-sign-out-alt mr-1" aria-hidden="true"></i>' +
+      neteaseAccountLabel('logoutBtnLabel') + '</button>';
+  neteaseAccountBody.querySelector('.netease-logout-btn').addEventListener('click', function() {
+    logoutNeteaseAccount(this);
+  });
 }
 
 async function loadNeteaseAccount() {

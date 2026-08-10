@@ -12,3 +12,5 @@ Command failures and integration errors.
 - 2026-08-09: `functions.shell_command` failed twice with Windows runner error 1920 while launching PowerShell in the workspace; switched to Node REPL filesystem and child-process execution.
 - 2026-08-09: `npm view` compatibility check could not run because npm is unavailable (`spawn npm ENOENT`); FontAwesome imports were limited to known v5-compatible icons and JavaScript syntax checks passed.
 - 2026-08-09: Direct fetch to unpkg for FontAwesome export verification failed in the execution environment; no repository files were changed by the check.
+
+- 2026-08-10: Initial Node-based patch matched only LF while repository files use CRLF; no files were changed, then the patch flow was adjusted to normalize line endings in memory.

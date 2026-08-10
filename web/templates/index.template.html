@@ -228,13 +228,37 @@
     <div class="netease-card-wrap">
         <div id="netease-account-card" class="card"
              data-not-logged-in-label="{{ tr('netease_not_logged_in') }}"
+             data-login-btn-label="{{ tr('netease_login_btn') }}"
+             data-logout-btn-label="{{ tr('netease_logout_btn') }}"
+             data-logout-confirm="{{ tr('netease_logout_confirm') }}"
              data-listening-time-label="{{ tr('netease_listening_time') }}"
              data-nickname-label="{{ tr('netease_nickname') }}"
-             data-error-label="{{ tr('netease_account_error') }}">
+             data-error-label="{{ tr('netease_account_error') }}"
+             data-qr-waiting-label="{{ tr('netease_qr_waiting') }}"
+             data-qr-scanned-label="{{ tr('netease_qr_scanned') }}"
+             data-qr-expired-label="{{ tr('netease_qr_expired') }}"
+             data-qr-success-label="{{ tr('netease_qr_success') }}">
             <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-user-circle mr-2" aria-hidden="true"></i>{{ tr('netease_account') }}</h3>
             </div>
             <div class="card-body" id="netease-account-body"></div>
+        </div>
+    </div>
+    <div class="modal fade" id="neteaseQrLoginModal" tabindex="-1" role="dialog"
+         aria-labelledby="neteaseQrLoginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="neteaseQrLoginModalLabel">{{ tr('netease_login_btn') }}</h3>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="{{ tr('close') }}">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="neteaseQrLoginImage" class="img-fluid mb-3" alt="{{ tr('netease_login_btn') }}">
+                    <div id="neteaseQrLoginStatus" class="text-muted">{{ tr('netease_qr_waiting') }}</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="netease-card-wrap">
@@ -292,6 +316,9 @@
                                 </label>
                                 <label id="filter-type-radio" class="btn btn-secondary">
                                     <input type="checkbox" name="options">{{ tr('radio') }}
+                                </label>
+                                <label id="filter-type-netease" class="btn btn-secondary">
+                                    <input type="checkbox" name="options">{{ tr('netease') }}
                                 </label>
                             </div>
                         </fieldset>

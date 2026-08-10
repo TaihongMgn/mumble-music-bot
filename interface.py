@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import base64
 import sqlite3
 from functools import wraps
 from flask import Flask, render_template, request, redirect, send_file, Response, jsonify, abort, session
@@ -73,6 +74,7 @@ web = Flask(__name__, template_folder=os.path.join(root_dir, "web/templates"))
 #web.config['TEMPLATES_AUTO_RELOAD'] = True
 log = logging.getLogger("bot")
 user = 'Remote Control'
+netease_qr_login_keys = {}
 
 
 def init_proxy():
@@ -364,11 +366,21 @@ def _extract_netease_playlist_id(value):
     return match.group(1) if match else None
 
 
+def _get_netease_qr_image_path():
+    image_path = var.config.get('netease', 'qr_image_path', fallback='music/qr_login.png')
+    if not os.path.isabs(image_path):
+        image_path = os.path.join(root_dir, image_path)
+    return image_path
+
+
+def _get_netease_cookie_manager():
+    return NeteaseCookieManager(
+        var.config.get('netease', 'cookie_file', fallback='config/netease_cookie.txt'))
+
+
 def _get_netease_client_and_cookie():
     client = NeteaseClient(var.config.get('netease', 'api_url'))
-    cookie_manager = NeteaseCookieManager(
-        var.config.get('netease', 'cookie_file', fallback='config/netease_cookie.txt'))
-    return client, cookie_manager.get_cookie()
+    return client, _get_netease_cookie_manager().get_cookie()
 
 
 @web.route("/api/netease/account", methods=['GET'])
@@ -395,6 +407,70 @@ def netease_account():
         log.exception("web: Netease account loading failed")
         return jsonify({'error': 'Netease account loading failed'}), 502
 
+
+@web.route("/api/netease/qr_start", methods=['POST'])
+@requires_auth
+def netease_qr_start():
+    try:
+        client = NeteaseClient(var.config.get('netease', 'api_url'))
+        key, qrimg_base64 = client.qr_login_start()
+        image_path = _get_netease_qr_image_path()
+        parent = os.path.dirname(image_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(image_path, "wb") as image_file:
+            image_file.write(base64.b64decode(qrimg_base64))
+        now = time.time()
+        for old_key, created_at in list(netease_qr_login_keys.items()):
+            if now - created_at >= 300:
+                netease_qr_login_keys.pop(old_key, None)
+        netease_qr_login_keys[key] = now
+        return jsonify({
+            'qr_url': f"/netease/qr_login.png?t={int(now * 1000)}",
+            'key': key,
+        })
+    except (requests.RequestException, ValueError, TypeError, OSError):
+        log.exception("web: Could not create Netease login QR code")
+        return jsonify({'error': 'Could not create Netease login QR code'}), 502
+
+
+def _netease_qr_message(code):
+    if code == 801:
+        return tr_web('netease_qr_waiting')
+    if code == 802:
+        return tr_web('netease_qr_scanned')
+    if code == 803:
+        return tr_web('netease_qr_success')
+    return tr_web('netease_qr_expired')
+
+
+@web.route("/api/netease/qr_check", methods=['GET'])
+@requires_auth
+def netease_qr_check():
+    key = request.args.get('key', '').strip()
+    created_at = netease_qr_login_keys.get(key)
+    if not key or created_at is None or time.time() - created_at >= 300:
+        netease_qr_login_keys.pop(key, None)
+        return jsonify({'code': 800, 'message': _netease_qr_message(800)})
+    try:
+        client = NeteaseClient(var.config.get('netease', 'api_url'))
+        code, cookie = client.qr_login_check(key)
+        code = int(code or 0)
+        if code == 803:
+            if cookie:
+                _get_netease_cookie_manager().set_cookie(cookie)
+            netease_qr_login_keys.pop(key, None)
+        return jsonify({'code': code, 'message': _netease_qr_message(code)})
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: Netease QR login check failed")
+        return jsonify({'error': 'Netease QR login check failed'}), 502
+
+
+@web.route("/api/netease/logout", methods=['POST'])
+@requires_auth
+def netease_logout():
+    _get_netease_cookie_manager().clear_cookie()
+    return jsonify({'success': True})
 
 
 def _add_netease_listening_time(duration_ms):
@@ -513,8 +589,7 @@ def netease_playlists():
 @web.route("/netease/qr_login.png", methods=['GET'])
 @requires_auth
 def netease_qr_login_image():
-    image_path = util.solve_filepath(
-        var.config.get('netease', 'qr_image_path', fallback='music/qr_login.png'))
+    image_path = _get_netease_qr_image_path()
     if not os.path.isfile(image_path):
         abort(404)
     return send_file(image_path, mimetype='image/png')
@@ -968,7 +1043,7 @@ def library():
                     else:
                         result['thumb'] = "static/image/unknown-album.png"
 
-                    if item.type == 'file':
+                    if item.type in ('file', 'netease'):
                         result['path'] = item.path
                         result['artist'] = item.artist
                     else:
