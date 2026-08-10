@@ -120,3 +120,10 @@ templates/*.html
 
 # Pycharm
 .idea/
+
+# 开发任务提示词 & 本地配置
+*_TASK.md
+config.ini
+netease_cookie.txt
+qr_login.png
+*.log
