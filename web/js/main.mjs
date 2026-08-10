@@ -128,6 +128,7 @@ function addPlaylistItem(item) {
   pl_title_element.html(item.title);
   pl_artist_element.html(item.artist);
   pl_user_element.text(item.user ? '👤 ' + item.user : '');
+  pl_user_element.toggleClass('d-none', !item.user);
   pl_type_element.html(item.type);
   pl_path_element.html(item.path);
 
