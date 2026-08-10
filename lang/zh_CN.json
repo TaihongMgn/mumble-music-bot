@@ -251,6 +251,16 @@
         "nav_netease": "网易云",
         "nav_library": "音乐库",
         "nav_library_upload": "音乐库&上传",
+        "nav_accounts": "账号管理",
+        "account_list": "账号列表",
+        "account_role": "角色",
+        "actions": "操作",
+        "delete": "删除",
+        "delete_account_confirm": "确定要删除账号 {name} 吗？",
+        "admin_role": "管理员",
+        "user_role": "用户",
+        "cannot_delete_admin": "不能删除管理员账号",
+        "username_not_found": "账号不存在",
         "navigation": "主导航",
         "switch_theme": "切换主题"
     }

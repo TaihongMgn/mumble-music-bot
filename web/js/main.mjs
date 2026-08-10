@@ -1430,9 +1430,106 @@ async function loadSessionUser() {
     const data = await response.json();
     if (!response.ok) throw new Error('session user failed');
     el.textContent = data.user ? '👤 ' + data.user : '';
+    if (data.is_admin) {
+      const navLink = document.getElementById('nav-accounts-link');
+      if (navLink) navLink.classList.remove('d-none');
+    }
   } catch (error) {
     el.textContent = '';
   }
+}
+
+// ---------------------
+// ------ Accounts ------
+// ---------------------
+const accountsTableBody = document.getElementById('accounts-table-body');
+const accountsRegisterForm = document.getElementById('accounts-register-form');
+const accountsRegisterMsg = document.getElementById('accounts-register-msg');
+const accountsView = document.getElementById('view-accounts');
+
+function accountsLabel(name) {
+  return accountsView ? (accountsView.dataset[name] || '') : '';
+}
+
+function showAccountsMsg(text, isError = false) {
+  if (!accountsRegisterMsg) return;
+  accountsRegisterMsg.textContent = text;
+  accountsRegisterMsg.className = 'alert ' + (isError ? 'alert-danger' : 'alert-success');
+  accountsRegisterMsg.classList.remove('d-none');
+}
+
+async function loadAccounts() {
+  if (!accountsTableBody) return;
+  try {
+    const response = await fetch('/api/accounts');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'accounts load failed');
+    const accounts = data.accounts || [];
+    const roleAdmin = accountsLabel('roleAdmin');
+    const roleUser = accountsLabel('roleUser');
+    const deleteBtn = accountsLabel('deleteBtn');
+    accountsTableBody.innerHTML = accounts.map((acc) => `
+      <tr>
+        <td>${escapeNeteaseHtml(acc.username)}</td>
+        <td><span class="badge ${acc.role === 'admin' ? 'badge-warning' : 'badge-secondary'}">${acc.role === 'admin' ? escapeNeteaseHtml(roleAdmin) : escapeNeteaseHtml(roleUser)}</span></td>
+        <td class="text-right">
+          ${acc.role === 'admin' ? '' : `<button type="button" class="btn btn-sm btn-danger accounts-delete-btn" data-username="${escapeNeteaseHtml(acc.username)}"><i class="fas fa-trash-alt mr-1"></i>${escapeNeteaseHtml(deleteBtn)}</button>`}
+        </td>
+      </tr>
+    `).join('');
+    accountsTableBody.querySelectorAll('.accounts-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const username = btn.dataset.username;
+        if (!window.confirm(accountsLabel('deleteConfirm').replace('{name}', username))) return;
+        try {
+          const resp = await fetch('/api/accounts/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: username}),
+          });
+          const result = await resp.json();
+          if (!resp.ok || !result.success) throw new Error(result.error || 'delete failed');
+          loadAccounts();
+        } catch (error) {
+          showAccountsMsg(error.message, true);
+        }
+      });
+    });
+  } catch (error) {
+    if (accountsTableBody) accountsTableBody.innerHTML = '';
+    showAccountsMsg(error.message, true);
+  }
+}
+
+if (accountsRegisterForm) {
+  accountsRegisterForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const username = document.getElementById('accounts-username').value.trim();
+    const password = document.getElementById('accounts-password').value;
+    const confirm = document.getElementById('accounts-confirm').value;
+    try {
+      const response = await fetch('/api/accounts/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: username, password: password, confirm_password: confirm}),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'register failed');
+      accountsRegisterForm.reset();
+      showAccountsMsg(accountsLabel('registerSuccess') || 'OK');
+      loadAccounts();
+    } catch (error) {
+      showAccountsMsg(error.message, true);
+    }
+  });
+}
+
+// 切到账号管理视图时刷新列表
+const navAccountsLink = document.getElementById('nav-accounts-link');
+if (navAccountsLink) {
+  navAccountsLink.addEventListener('click', () => {
+    loadAccounts();
+  });
 }
 
 function refreshPlaylistAfterNeteasePlayback() {
@@ -1728,6 +1825,7 @@ function switchView(viewId, activeLink = null) {
 }
 
 navLinks.forEach((link) => link.addEventListener('click', (event) => {
+  if (!link.dataset.view) return;  // 非视图链接（如退出登录）正常跳转
   event.preventDefault();
   switchView(link.dataset.view, link);
   if (link.dataset.scrollTarget) {

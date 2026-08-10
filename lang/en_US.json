@@ -251,6 +251,16 @@
         "nav_netease": "Netease",
         "nav_library": "Library",
         "nav_library_upload": "Library & Upload",
+        "nav_accounts": "Accounts",
+        "account_list": "Account List",
+        "account_role": "Role",
+        "actions": "Actions",
+        "delete": "Delete",
+        "delete_account_confirm": "Are you sure to delete account {name}?",
+        "admin_role": "Admin",
+        "user_role": "User",
+        "cannot_delete_admin": "Cannot delete the admin account",
+        "username_not_found": "Account not found",
         "navigation": "Main navigation",
         "switch_theme": "Switch theme"
     }

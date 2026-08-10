@@ -385,7 +385,75 @@ def index():
 @web.route("/api/session_user", methods=['GET'])
 @requires_auth
 def api_session_user():
-    return jsonify({'user': user or ''})
+    return jsonify({'user': user or '', 'is_admin': _is_admin(user or '')})
+
+
+def _require_admin():
+    if not _is_admin(user or ''):
+        abort(403)
+
+
+@web.route("/api/accounts", methods=['GET'])
+@requires_auth
+def api_accounts_list():
+    _require_admin()
+    users = _get_web_users()
+    result = []
+    admin_user = _admin_username()
+    for username in users:
+        result.append({'username': username, 'role': 'admin' if username == admin_user else 'user'})
+    return jsonify({'accounts': result})
+
+
+@web.route("/api/accounts/register", methods=['POST'])
+@requires_auth
+def api_accounts_register():
+    _require_admin()
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get('username', '')).strip()
+    password = str(payload.get('password', ''))
+    confirm = str(payload.get('confirm_password', ''))
+    web_users = _get_web_users()
+
+    if not re.fullmatch(r'[A-Za-z0-9_]+', username):
+        return jsonify({'error': tr_web('username_invalid')}), 400
+    if len(password) < 6:
+        return jsonify({'error': tr_web('password_too_short')}), 400
+    if password != confirm:
+        return jsonify({'error': tr_web('password_mismatch')}), 400
+    if username == _admin_username() or username in web_users:
+        return jsonify({'error': tr_web('username_exists')}), 400
+
+    user_dict = {}
+    try:
+        user_dict = json.loads(var.db.get('user', username, fallback='{}'))
+    except (TypeError, ValueError):
+        user_dict = {}
+    if not isinstance(user_dict, dict):
+        user_dict = {}
+    user_dict['password'], user_dict['salt'] = util.get_salted_password_hash(password)
+    web_users.append(username)
+    var.db.set('privilege', 'web_access', json.dumps(web_users))
+    var.db.set('user', username, json.dumps(user_dict))
+    return jsonify({'success': True})
+
+
+@web.route("/api/accounts/delete", methods=['POST'])
+@requires_auth
+def api_accounts_delete():
+    _require_admin()
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get('username', '')).strip()
+    if not username or username == _admin_username():
+        return jsonify({'error': tr_web('cannot_delete_admin')}), 400
+    web_users = _get_web_users()
+    if username not in web_users:
+        return jsonify({'error': tr_web('username_not_found')}), 400
+    web_users.remove(username)
+    var.db.set('privilege', 'web_access', json.dumps(web_users))
+    var.db.set('user', username, json.dumps({}))
+    return jsonify({'success': True})
+
 
 
 @web.route("/playlist", methods=['GET'])
