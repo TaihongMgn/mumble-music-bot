@@ -33,6 +33,13 @@
                 <span>{{ tr('nav_library_upload') }}</span>
             </a>
         </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user text-muted small" id="sidebar-user"></div>
+            <a href="logout" class="nav-link" title="{{ tr('logout_btn') }}">
+                <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                <span>{{ tr('logout_btn') }}</span>
+            </a>
+        </div>
     </aside>
 
     <div class="main-content">
@@ -136,6 +143,8 @@
                             <div class="playlist-artwork">
                                 <b class="playlist-item-title"></b>
                                 <span class="playlist-item-type badge badge-secondary"></span>
+                                <br />
+                                <span class="playlist-item-user text-muted small"></span>
                                 <br />
                                 <span class="playlist-item-artist"></span>
                                 <br />

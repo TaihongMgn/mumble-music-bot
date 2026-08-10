@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import hashlib
+import hmac
 import html
 import magic
 import os
@@ -418,9 +419,7 @@ def get_salted_password_hash(password):
 
 def verify_password(password, salted_hash, salt):
     hashed = hashlib.pbkdf2_hmac('sha1', password.encode("utf-8"), bytearray.fromhex(salt), 100000)
-    if hashed.hex() == salted_hash:
-        return True
-    return False
+    return hmac.compare_digest(hashed.hex(), salted_hash)
 
 
 def get_supported_language():

@@ -29,6 +29,7 @@ from netease import NeteaseClient, NeteaseCookieManager
 import logging
 import time
 import requests
+import secrets
 
 
 class ReverseProxied(object):
@@ -71,6 +72,10 @@ class ReverseProxied(object):
 
 root_dir = os.path.dirname(__file__)
 web = Flask(__name__, template_folder=os.path.join(root_dir, "web/templates"))
+# A random fallback keeps session signing safe when no persistent secret is configured.
+web.secret_key = secrets.token_hex(32)
+web.config['SESSION_COOKIE_HTTPONLY'] = True
+web.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 #web.config['TEMPLATES_AUTO_RELOAD'] = True
 log = logging.getLogger("bot")
 user = 'Remote Control'
@@ -86,65 +91,124 @@ def init_proxy():
 # https://stackoverflow.com/questions/29725217/password-protect-one-webpage-in-flask-app
 
 
-def check_auth(username, password):
-    """This function is called to check if a username /
-    password combination is valid.
-    """
+def _get_web_users():
+    try:
+        return json.loads(var.db.get("privilege", "web_access", fallback='[]'))
+    except (TypeError, ValueError, AttributeError):
+        return []
 
-    if username == var.config.get("webinterface", "user") and password == var.config.get("webinterface", "password"):
+
+def _admin_username():
+    return var.config.get("webinterface", "user", fallback="")
+
+
+def _is_admin(username):
+    return bool(username) and username == _admin_username()
+
+
+def _session_user_is_valid(username):
+    if not username:
+        return False
+    return _is_admin(username) or username in _get_web_users()
+
+
+def check_auth(username, password):
+    """Return whether a web username/password combination is valid."""
+    if username and username == _admin_username() and password == var.config.get("webinterface", "password", fallback=""):
         return True
 
-    web_users = json.loads(var.db.get("privilege", "web_access", fallback='[]'))
-    if username in web_users:
-        user_dict = json.loads(var.db.get("user", username, fallback='{}'))
-        if 'password' in user_dict and 'salt' in user_dict and \
-                util.verify_password(password, user_dict['password'], user_dict['salt']):
-            return True
+    if username not in _get_web_users():
+        return False
 
-    return False
+    try:
+        user_dict = json.loads(var.db.get("user", username, fallback='{}'))
+        return bool(
+            'password' in user_dict and 'salt' in user_dict
+            and util.verify_password(password, user_dict['password'], user_dict['salt'])
+        )
+    except (TypeError, ValueError, AttributeError, KeyError):
+        return False
 
 
 def authenticate():
-    """Sends a 401 response that enables basic auth"""
-    global log
+    """Send the legacy HTTP Basic Auth challenge."""
     return Response('Could not verify your access level for that URL.\n'
                     'You have to login with proper credentials', 401,
                     {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 
+BAD_ACCESS_BAN_SECONDS = 5 * 60
 bad_access_count = {}
-banned_ip = []
+banned_ip = {}
+
+
+def _client_ip():
+    return request.remote_addr or 'unknown'
+
+
+def _max_attempts():
+    return var.config.getint("webinterface", "max_attempts", fallback=10)
+
+
+def _cleanup_banned_ips():
+    now = time.time()
+    for ip, banned_at in list(banned_ip.items()):
+        if now - banned_at >= BAD_ACCESS_BAN_SECONDS:
+            banned_ip.pop(ip, None)
+            bad_access_count.pop(ip, None)
+
+
+def _is_ip_banned(ip=None):
+    _cleanup_banned_ips()
+    return (ip or _client_ip()) in banned_ip
+
+
+def _record_failed_access(ip=None):
+    ip = ip or _client_ip()
+    count = bad_access_count.get(ip, 0) + 1
+    bad_access_count[ip] = count
+    log.info("web: failed authentication attempt from ip %s (%d attempts).", ip, count)
+    if count > _max_attempts():
+        banned_ip[ip] = time.time()
+        log.info("web: access banned for %s for %d seconds.", ip, BAD_ACCESS_BAN_SECONDS)
+    return count
+
+
+def _reset_failed_access(ip=None):
+    ip = ip or _client_ip()
+    bad_access_count.pop(ip, None)
+    banned_ip.pop(ip, None)
 
 
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        global log, user, bad_access_count, banned_ip
+        global user
 
-        if request.remote_addr in banned_ip:
+        ip = _client_ip()
+        if _is_ip_banned(ip):
             abort(403)
 
-        auth_method = var.config.get("webinterface", "auth_method")
+        auth_method = var.config.get("webinterface", "auth_method", fallback="none")
+
+        if auth_method == 'session':
+            session_user = session.get('user')
+            if _session_user_is_valid(session_user):
+                user = session_user
+                return f(*args, **kwargs)
+            session.pop('user', None)
+            return redirect('/login')
 
         if auth_method == 'password':
             auth = request.authorization
             if auth:
                 user = auth.username
-                if not check_auth(auth.username, auth.password):
-                    if request.remote_addr in bad_access_count:
-                        bad_access_count[request.remote_addr] += 1
-                        log.info(f"web: failed login attempt, user: {auth.username}, from ip {request.remote_addr}."
-                                 f"{bad_access_count[request.remote_addr]} attempts.")
-                        if bad_access_count[request.remote_addr] > var.config.getint("webinterface", "max_attempts",
-                                                                                     fallback=10):
-                            banned_ip.append(request.remote_addr)
-                            log.info(f"web: access banned for {request.remote_addr}")
-                    else:
-                        bad_access_count[request.remote_addr] = 1
-                        log.info(f"web: failed login attempt, user: {auth.username}, from ip {request.remote_addr}.")
-                    return authenticate()
-            else:
+                if check_auth(auth.username, auth.password):
+                    return f(*args, **kwargs)
+                _record_failed_access(ip)
                 return authenticate()
+            return authenticate()
+
         if auth_method == 'token':
             if 'user' in session and 'token' not in request.args:
                 user = session['user']
@@ -157,26 +221,17 @@ def requires_auth(f):
 
                     user_info = var.db.get("user", user, fallback=None)
                     user_dict = json.loads(user_info)
-                    user_dict['IP'] = request.remote_addr
+                    user_dict['IP'] = ip
                     var.db.set("user", user, json.dumps(user_dict))
 
                     log.debug(
-                        f"web: new user access, token validated for the user: {token_user}, from ip {request.remote_addr}.")
+                        "web: new user access, token validated for the user: %s, from ip %s.",
+                        token_user, ip)
                     session['token'] = token
                     session['user'] = token_user
                     return f(*args, **kwargs)
 
-            if request.remote_addr in bad_access_count:
-                bad_access_count[request.remote_addr] += 1
-                log.info(f"web: bad token from ip {request.remote_addr}, "
-                         f"{bad_access_count[request.remote_addr]} attempts.")
-                if bad_access_count[request.remote_addr] > var.config.getint("webinterface", "max_attempts"):
-                    banned_ip.append(request.remote_addr)
-                    log.info(f"web: access banned for {request.remote_addr}")
-            else:
-                bad_access_count[request.remote_addr] = 1
-                log.info(f"web: bad token from ip {request.remote_addr}.")
-
+            _record_failed_access(ip)
             return render_template(f'need_token.{var.language}.html',
                                    name=var.config.get('bot', 'username'),
                                    command=f"{var.config.get('commands', 'command_symbol')[0]}"
@@ -231,10 +286,106 @@ def get_all_dirs():
     return dirs
 
 
+def _render_login_page(**context):
+    context.setdefault('is_admin', _is_admin(session.get('user')))
+    context.setdefault('session_user', session.get('user'))
+    context.setdefault('register_form', False)
+    context.setdefault('register_username', '')
+    return render_template('login.html', tr=tr_web, **context)
+
+
+@web.route('/login', methods=['GET', 'POST'])
+def login():
+    ip = _client_ip()
+    if _is_ip_banned(ip):
+        abort(403)
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        if not check_auth(username, password):
+            _record_failed_access(ip)
+            return _render_login_page(error=tr_web('login_failed'), username=username), 200
+
+        _reset_failed_access(ip)
+        session.clear()
+        session['user'] = username
+        return redirect('/')
+
+    return _render_login_page()
+
+
+@web.route('/logout', methods=['GET'])
+def logout():
+    session.clear()
+    return redirect('/login')
+
+
+@web.route('/register', methods=['GET', 'POST'])
+def register():
+    ip = _client_ip()
+    if _is_ip_banned(ip):
+        abort(403)
+
+    if not _is_admin(session.get('user')):
+        _record_failed_access(ip)
+        return redirect('/login')
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+        error = None
+        web_users = _get_web_users()
+
+        if not re.fullmatch(r'[A-Za-z0-9_]+', username):
+            error = tr_web('username_invalid')
+        elif len(password) < 6:
+            error = tr_web('password_too_short')
+        elif password != confirm:
+            error = tr_web('password_mismatch')
+        elif username == _admin_username() or username in web_users:
+            error = tr_web('username_exists')
+
+        if error:
+            _record_failed_access(ip)
+            return _render_login_page(
+                register_form=True,
+                register_error=error,
+                register_username=username), 400
+
+        user_dict = {}
+        try:
+            user_dict = json.loads(var.db.get('user', username, fallback='{}'))
+        except (TypeError, ValueError):
+            user_dict = {}
+        if not isinstance(user_dict, dict):
+            user_dict = {}
+        user_dict['password'], user_dict['salt'] = util.get_salted_password_hash(password)
+        web_users.append(username)
+        var.db.set('privilege', 'web_access', json.dumps(web_users))
+        var.db.set('user', username, json.dumps(user_dict))
+        _reset_failed_access(ip)
+        return _render_login_page(register_form=True, register_success=tr_web('register_success'))
+
+    return _render_login_page(register_form=True)
+
+
 @web.route("/", methods=['GET'])
 @requires_auth
 def index():
-    return open(os.path.join(root_dir, f"web/templates/index.{var.language}.html"), "r").read()
+    html = open(os.path.join(root_dir, f"web/templates/index.{var.language}.html"), "r").read()
+    response = Response(html, mimetype='text/html; charset=utf-8')
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+
+@web.route("/api/session_user", methods=['GET'])
+@requires_auth
+def api_session_user():
+    return jsonify({'user': user or ''})
 
 
 @web.route("/playlist", methods=['GET'])
@@ -305,6 +456,7 @@ def playlist():
             'path': path,
             'title': title,
             'artist': artist,
+            'user': item_wrapper.user or '',
             'thumbnail': thumb,
             'tags': tag_tuples,
             'duration': duration

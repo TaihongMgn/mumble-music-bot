@@ -349,6 +349,8 @@ body {
     overflow-y: auto;
     background: #1a1a1a;
     color: #ffffff;
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar-brand {
@@ -369,6 +371,22 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sidebar-user {
+    padding: 4px 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sidebar .nav-link {

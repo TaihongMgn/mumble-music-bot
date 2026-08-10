@@ -1290,6 +1290,10 @@ def cmd_user_password(bot, user, text, command, parameter):
         bot.send_msg(tr('bad_parameter', command=command), text)
         return
 
+    if len(parameter) < 6:
+        bot.send_msg(tr('password_too_short'), text)
+        return
+
     user_info = var.db.get("user", user, fallback='{}')
     user_dict = json.loads(user_info)
     user_dict['password'], user_dict['salt'] = util.get_salted_password_hash(parameter)
@@ -1302,6 +1306,10 @@ def cmd_user_password(bot, user, text, command, parameter):
 def cmd_web_user_add(bot, user, text, command, parameter):
     if not parameter:
         bot.send_msg(tr('bad_parameter', command=command), text)
+        return
+
+    if not re.fullmatch(r"[A-Za-z0-9_]+", parameter):
+        bot.send_msg(tr('username_invalid'), text)
         return
 
     auth_method = var.config.get("webinterface", "auth_method")

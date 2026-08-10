@@ -39,7 +39,7 @@ def _config(option, fallback=""):
 
 
 def _client():
-    return NeteaseClient(_config("api_url", "http://netease-api:3000"))
+    return NeteaseClient(_config("api_url", "http://127.0.0.1:3000"))
 
 
 def _cookie_manager():

@@ -14,3 +14,5 @@ Command failures and integration errors.
 - 2026-08-09: Direct fetch to unpkg for FontAwesome export verification failed in the execution environment; no repository files were changed by the check.
 
 - 2026-08-10: Initial Node-based patch matched only LF while repository files use CRLF; no files were changed, then the patch flow was adjusted to normalize line endings in memory.
+
+- 2026-08-10: Python import validation could not run because the workspace interpreter lacks the Flask dependency; py_compile still passed.

@@ -12,6 +12,7 @@ import subprocess as sp
 import argparse
 import os
 import os.path
+import secrets
 import pymumble_py3 as pymumble
 import pymumble_py3.constants
 import variables as var
@@ -769,7 +770,12 @@ def start_web_interface(addr, port):
 
     interface.init_proxy()
     interface.web.env = 'development'
-    interface.web.secret_key = var.config.get('webinterface', 'flask_secret')
+    session_secret = var.config.get('webinterface', 'session_secret', fallback='').strip()
+    if not session_secret:
+        session_secret = var.config.get('webinterface', 'flask_secret', fallback='').strip()
+    if not session_secret:
+        session_secret = secrets.token_hex(32)
+    interface.web.secret_key = session_secret
     interface.web.run(port=port, host=addr)
 
 

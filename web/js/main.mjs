@@ -31,6 +31,7 @@ const pl_id_element = $('.playlist-item-id');
 const pl_index_element = $('.playlist-item-index');
 const pl_title_element = $('.playlist-item-title');
 const pl_artist_element = $('.playlist-item-artist');
+const pl_user_element = $('.playlist-item-user');
 const pl_type_element = $('.playlist-item-type');
 const pl_path_element = $('.playlist-item-path');
 
@@ -126,6 +127,7 @@ function addPlaylistItem(item) {
   pl_index_element.html(item.index + 1);
   pl_title_element.html(item.title);
   pl_artist_element.html(item.artist);
+  pl_user_element.text(item.user ? '👤 ' + item.user : '');
   pl_type_element.html(item.type);
   pl_path_element.html(item.path);
 
@@ -1419,6 +1421,19 @@ async function loadNeteaseAccount() {
   }
 }
 
+async function loadSessionUser() {
+  const el = document.getElementById('sidebar-user');
+  if (!el) return;
+  try {
+    const response = await fetch('/api/session_user');
+    const data = await response.json();
+    if (!response.ok) throw new Error('session user failed');
+    el.textContent = data.user ? '👤 ' + data.user : '';
+  } catch (error) {
+    el.textContent = '';
+  }
+}
+
 function refreshPlaylistAfterNeteasePlayback() {
   playlist_ver = -1;
   checkForPlaylistUpdate();
@@ -1550,6 +1565,7 @@ if (neteasePlaylistFetchBtn) {
 }
 
 loadNeteaseAccount();
+loadSessionUser();
 
 // ---------------------
 // ------  Player ------
