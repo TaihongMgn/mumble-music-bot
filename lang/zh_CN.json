@@ -226,6 +226,7 @@
         "netease_qr_waiting": "请使用网易云音乐 App 扫码",
         "netease_qr_scanned": "已扫码，请在手机上确认",
         "netease_qr_expired": "二维码已过期，请重新扫码",
+        "netease_qr_confirm_btn": "扫码登录完成",
         "netease_qr_success": "网易云登录成功",
         "nav_playlist": "播放列表",
         "nav_netease": "网易云",

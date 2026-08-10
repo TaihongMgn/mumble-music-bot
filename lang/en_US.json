@@ -226,6 +226,7 @@
         "netease_qr_waiting": "Scan with Netease Music app",
         "netease_qr_scanned": "Scanned, please confirm on phone",
         "netease_qr_expired": "QR code expired, please retry",
+        "netease_qr_confirm_btn": "Login Complete",
         "netease_qr_success": "Netease login succeeded",
         "nav_playlist": "Playlist",
         "nav_netease": "Netease",

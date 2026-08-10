@@ -1236,6 +1236,7 @@ const neteaseQrLoginStatus = document.getElementById('neteaseQrLoginStatus');
 let neteaseQrPollTimer = null;
 let neteaseQrTimeoutTimer = null;
 let neteaseQrChecking = false;
+let neteaseQrCurrentKey = null;
 
 function stopNeteaseQrPolling() {
   if (neteaseQrPollTimer) {
@@ -1247,6 +1248,7 @@ function stopNeteaseQrPolling() {
     neteaseQrTimeoutTimer = null;
   }
   neteaseQrChecking = false;
+  neteaseQrCurrentKey = null;
 }
 
 function setNeteaseQrStatus(text) {
@@ -1293,6 +1295,7 @@ async function startNeteaseQrLogin() {
     }
     neteaseQrLoginImage.src = data.qr_url;
     setNeteaseQrStatus(neteaseAccountLabel('qrWaitingLabel'));
+    neteaseQrCurrentKey = data.key;
     neteaseQrLoginModal.show();
     neteaseQrPollTimer = setInterval(() => checkNeteaseQrLogin(data.key), 2000);
     neteaseQrTimeoutTimer = setTimeout(() => {
@@ -1303,6 +1306,35 @@ async function startNeteaseQrLogin() {
     console.error('Netease QR login start failed', error);
     setNeteaseQrStatus(error.message || neteaseAccountLabel('qrExpiredLabel'));
   }
+}
+
+async function confirmNeteaseQrLogin() {
+  const key = neteaseQrCurrentKey;
+  if (!key) return;
+  const btn = document.getElementById('neteaseQrConfirmBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const response = await fetch('/api/netease/qr_check?key=' + encodeURIComponent(key));
+    const data = await response.json();
+    if (Number(data.code) === 803) {
+      stopNeteaseQrPolling();
+      setNeteaseQrStatus(neteaseAccountLabel('qrSuccessLabel'));
+      if (neteaseQrLoginModal) neteaseQrLoginModal.hide();
+      loadNeteaseAccount();
+    } else {
+      setNeteaseQrStatus(data.message || neteaseAccountLabel('qrWaitingLabel'));
+    }
+  } catch (error) {
+    console.error('Netease QR confirm failed', error);
+    setNeteaseQrStatus(error.message || neteaseAccountLabel('qrExpiredLabel'));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+const neteaseQrConfirmBtn = document.getElementById('neteaseQrConfirmBtn');
+if (neteaseQrConfirmBtn) {
+  neteaseQrConfirmBtn.addEventListener('click', confirmNeteaseQrLogin);
 }
 
 async function logoutNeteaseAccount(button) {
