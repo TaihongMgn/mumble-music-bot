@@ -106,13 +106,16 @@ class NeteaseItem(BaseItem):
 
     def validate(self):
         with self.validating_lock:
-            if self.ready in ['yes', 'validated']:
-                return True
-
             # A complete local file is the cache hit; no API request is needed.
             if os.path.exists(self.path):
-                self.ready = 'yes'
+                if self.ready != 'yes':
+                    self.ready = 'yes'
+                    self.version += 1  # notify wrapper to save the 'yes' state
                 return True
+
+            if self.ready in ['yes', 'validated']:
+                # previously validated but the file is gone -> re-fetch URL
+                self.ready = 'validated'
 
             try:
                 client, cookie = self._get_client_and_cookie()
@@ -184,6 +187,7 @@ class NeteaseItem(BaseItem):
             response.close()
             os.replace(partial_path, self.path)
             self.ready = 'yes'
+            self.version += 1  # notify wrapper to save the 'yes' state
             self.log.info("netease: finished downloading %s", self.path)
         except (requests.RequestException, OSError) as error:
             self.log.error("netease: download failed: %s", error)
