@@ -25,9 +25,13 @@ export default class {
      * @param {boolean} dark Whether to activate dark theme.
      */
     static set(dark = false) {
+      // Preserve any cache-busting query parameter from the current href.
+      const current = document.getElementById('pagestyle').getAttribute('href');
+      const qIndex = current ? current.indexOf('?') : -1;
+      const query = qIndex >= 0 ? current.substring(qIndex) : '';
       // Swap CSS to selected theme
       document.getElementById('pagestyle')
-          .setAttribute('href', 'static/css/' + (dark ? 'dark' : 'main') + '.css');
+          .setAttribute('href', 'static/css/' + (dark ? 'dark' : 'main') + '.css' + query);
 
       // Update local storage
       localStorage.setItem('darkTheme', dark);
