@@ -1,292 +1,120 @@
-# Important Announcement
-
-Hello everyone,
-
-First, let's look at the problems:
-1. I don't use mumble anymore, working on a bot you don't use produces a leak of testing and motivation.
-2. I don't code like before, my hobbies have changed, I maintain stuff I still use, but no real coding anymore.
-3. Botamusique is monolitique
-
-I've been trying to make a POC to change the monolitique part, to have a fully modulable bot, with asyncio and and feature/backend as plugins. But asyncio was blocking for me, especially to make the bot with fastapi, discord api / pymumble. It's 2 async loop and I don't have the knowledge to make it work.
-To be transparent, botamusique was the biggest project I've done, one of the funniest. Thanks @TerryGeng for joining the adventure.
-
-I don't think I will be looking for a maintainer, the monolithic part of this project is not something that needs to be maintained.
-
-**This projet will be archived.**
-
-BUT If someone want to rewrite a bot, I'm ready to help with the projet : what to do, Errors to avoid, Design/architecture help (but no code). I think **_8 years_** on this projet (have start with [this small projet](https://github.com/azlux/MumbleRadioPlayer/commit/56ca276c5519fcb0e1af043beb043202e65c2cca)) can help someone.
-
-It was really funny, thank all, for your support !
-
-See you in space cowboy.
-
--- Azlux
-
------
-
 <div align="center">
-<img src="static/image/logo.png" alt="botamusique" width="200px" />
-<h1>botamusique</h1>
+<img src="static/image/logo.png" alt="FX Music Bot" width="120px" />
+<h1>FX Music Bot</h1>
+<p>Mumble 音乐点播机器人 · 网易云音乐深度集成 · Web 控制面板</p>
 </div>
 
-Botamusique is a [Mumble](https://www.mumble.info/) music bot.
-Predicted functionalities will be those people would expect from any classic music player.
+---
 
-[![Build Status](https://ci.azlux.fr/api/badges/azlux/botamusique/status.svg)](https://ci.azlux.fr/azlux/botamusique)
+基于 [botamusique](https://github.com/azlux/botamusique) 深度定制的 Mumble 音乐机器人，**单容器融合部署**（机器人 + 网易云 API 一个镜像跑完），带完整的 Web 账号系统。
 
-## Features
+## ✨ 功能亮点
 
-1. **Support multiple music sources:**
-    - Music files in local folders (which can be uploaded through the web interface).
-    - Youtube/Soundcloud URLs and playlists (everything supported by youtube-dl).
-    - Radio stations from URL and http://www.radio-browser.info API.
-2. **Modern and powerful web remote control interface.** Powered by Flask. Which supports:
-    - Playlist management.
-    - Music library management, including uploading, browsing all files and edit tags, etc.
-3. **Powerful command system.** Commands and words the bot says are fully customizable. Support partial-match for commands.
-4. **Ducking.** The bot would automatically lower its volume if people are talking.
-5. **Stereo sound.** After Mumble 1.4.0, stereo output support has been added. Our bot is designed to work nicely with it naturally.
-6. **Multilingual support.** A list of supported languages can be found below.
+- **🎵 多音乐源**：网易云音乐、YouTube、SoundCloud、本地文件、网络电台
+- **☁️ 网易云深度集成**：
+  - `!yun` 命令搜索 / 点播 / 歌单，Web 面板搜索、保存歌单
+  - **下载播放模式**：歌曲先下载到本地再播放，同一首歌二次点播秒开（本地缓存命中）
+  - **二维码登录**：Web 面板扫码登录账号，播放 VIP 歌曲
+- **👤 Web 账号系统**：
+  - 登录界面（session 认证），告别浏览器密码弹窗
+  - **仅管理员可注册新账号**（Web 端账号管理页：注册 / 列表 / 删除）
+  - 播放列表显示每首歌的**点歌人**（`👤 用户名`）
+- **🛡️ 安全**：登录失败防暴力（同一 IP 连续失败 10 次封禁 5 分钟）、密码加密存储、密码最小 6 位
+- **🎨 现代化 Web 界面**：深色主题、侧边栏导航、底部播放条（进度 / 音量 / 播放模式）、响应式适配手机
 
+## 📦 部署（单容器）
 
-## Screenshots
+镜像已发布到 Docker Hub：`taihong422/mumble-music-bot:latest`（内含 bot + 网易云 API，supervisord 管理双进程）。
 
-![botamusique in Mumble channel](https://user-images.githubusercontent.com/2306637/75210917-68fbf680-57bd-11ea-9cf8-c0871edff13f.jpg)
-
-![botamusique web interface](https://user-images.githubusercontent.com/2306637/77822763-b4911f80-7130-11ea-9bc5-83c36c995ab9.png)
-
------
-## Quick Start Guide
-1. [Installation](#installation)
-1. [Configuration](#configuration)
-1. [Run the bot](#run-the-bot)
-1. [Operate the bot](#operate-the-bot)
-1. [Update](#update)
-1. [Known issues](#known-issues)
-1. [Contributors](#contributors)
-
-## Installation
-
-### Dependencies
-1. Install python. We require a python version of 3.6 or higher.
-1. Install [Opus Codec](https://www.opus-codec.org/) (which should be already installed if you installed Mumble or Murmur, or you may try to install `opus-tools` with your package manager).
-1. Install ffmpeg. If ffmpeg isn't in your package manager, you may need to find another source. I personally use [this repository](http://repozytorium.mati75.eu/) on my raspberry.
-
-
-### Docker
-See https://github.com/azlux/botamusique/wiki/Docker-install
-
-Both stable and nightly (developing) builds are available!
-
-### Manual install
-
-**Stable release (recommended)**
-
-This is current stable version, with auto-update support. To install the stable release, run these lines in your terminal:
-```
-curl -Lo botamusique.tar.gz http://packages.azlux.fr/botamusique/sources-stable.tar.gz
-tar -xzf botamusique.tar.gz
-cd botamusique
-python3 -m venv venv
-venv/bin/pip install wheel
-venv/bin/pip install -r requirements.txt
+```yaml
+# docker-compose.yml
+services:
+  mumble-music-bot:
+    image: taihong422/mumble-music-bot:latest
+    container_name: mumble-music-bot
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8181:8181"
+    environment:
+      BAM_CONFIG_file: /config/config.ini
+      BAM_MUSIC_DB: /config/music.db
+      BAM_DB: /config/setting.db
+    volumes:
+      - ./config:/config
+      - ./music:/music
 ```
 
-**Nightly build (developing version)**
-<details>
-  <summary>Click to expand!</summary>
-
-This build reflects any newest change in the master branch, with auto-update support baked in. This version follow all commits into the master branch.
-```
-curl -Lo botamusique.tar.gz http://packages.azlux.fr/botamusique/sources-testing.tar.gz
-tar -xzf botamusique.tar.gz
-cd botamusique
-python3 -m venv venv
-venv/bin/pip install wheel
-venv/bin/pip install -r requirements.txt
-```
-</details>
-
-**Build from source code**
-<details>
-  <summary>Click to expand!</summary>
-
-You can checkout the master branch of our repo and compile everything by yourself.
-We will test new features in the master branch, maybe sometimes post some hotfixes.
-Please be noted that the builtin auto-update support doesn't track this version.
-If you have no idea what these descriptions mean to you, we recommend you install the stable version above.
-```
-git clone https://github.com/azlux/botamusique.git
-cd botamusique
-python3 -m venv venv
-venv/bin/pip install wheel
-venv/bin/pip install -r requirements.txt
-(cd web && npm install && npm run build)
-venv/bin/python3 ./scripts/translate_templates.py --lang-dir lang/ --template-dir web/templates/
-```
-</details>
-
-## Configuration
-Please copy `configuration.example.ini` into `configuration.ini`, follow the instructions in that file and uncomment options you would like to modify. Not all sections are needed. You may just keep the options that matter to you. For example, if you only would like to set `host`, all you need you is keep 
-```
-[server]
-host=xxxxxx
-```
-in your `configuration.ini`.
-
-Please DO NOT MODIFY `configuration.default.ini`, since if the bot realizes one option is undefined in `configuration.ini`, it will look into `configuration.default.ini` for the default value of that option. This file will be constantly overridden in each update.
-
-We list some basic settings for you to quickly get things working.
-
-### Basic settings
-1. Usually, the first thing is to set the Murmur server you'd like the bot to connect to. You may also specify which channel the bot stays, and tokens used by the bot.
-```
-[server]
-host = 127.0.0.1
-port = 64738
-```
-
-2. You need to specify a folder that stores your music files. The bot will look for music and upload files into that folder. You also need to specify a temporary folder to store music file downloads from URLs.
-```
-[bot]
-music_folder = music_folder/
-tmp_folder = /tmp/
-```
-
-3. **Web interface is disabled by default** for performance and security reasons. It is extremely powerful, so we encourage you to have a try. To enable it, set
-```
-[webinterface]
-enabled = True
-```
-
-Default binding address is
-```
-listening_addr = 127.0.0.1
-listening_port = 8181
-```
-
-You can access the web interface through http://127.0.0.1:8181 if you keep it unchanged.
-
-Note: Listening to address `127.0.0.1` will only accept requests from localhost. _If you would like to connect from the public internet, you need to set it to `0.0.0.0`, and set up username and password to impose access control._ In addition, if the bot is behind a router, you should also properly set forwarding rules in you NAT configuration to forward requests to the bot.
-
-4. The default language is English, but you can change it in `[bot]` section:
-```
-[bot]
-language=en_US
-```
-
-Available translations can be found inside `lang/` folder. Currently, options are
-
- - `en_US`, English
- - `es_ES`, Spanish
- - `fr_FR`, French
- - `it_IT`, Italian
- - `ja_JP`, Japanese
- - `zh_CN`, Chinese
-
-5. Generate a certificate (Optional, but recommended)
-
-By default, murmur server uses certificates to identify users. Without a valid certificate, you wouldn't able to register the bot into your Murmur server. Some server even refused users without a certificate. Therefore, it is recommended to generate a certificate for the bot. If you have a certificate (for say, `botmusique.pem` in the folder of the bot), you can specify its location in
-```
-[server]
-certificate=botamusique.pem
-```
-
-If you don't have a certificate, you may generate one by:
-`openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout botamusique.pem -out botamusique.pem -subj "/CN=botamusique"`
-
-
-### Sections explained
-- `server`: configuration about the server. Will be overridden by the `./mumbleBot.py` parameters.
-- `bot`: basic configuration of the bot, eg. name, comment, folder, default volume, etc.
-- `webinterface`: basic configuration about the web interface.
-- `commands`: you can customize the command you want for each action (eg. put `help = helpme` , the bot will respond to `!helpme`)
-- `radio`: a list of default radio (eg. play a jazz radio with the command `!radio jazz`)
-- `debug`: option to activate ffmpeg or pymumble debug output.
-
-
-## Run the bot
-If you have set up everything in your `configuration.ini`, you can
-`venv/bin/python mumbleBot.py --config configuration.ini`
-
-Or you can
-`venv/bin/python mumbleBot.py -s HOST -u BOTNAME -P PASSWORD -p PORT -c CHANNEL -C /path/to/botamusique.pem`
-
-If you want information about auto-starting and auto-restarting of the bot, you can check out the wiki page [Run botamusique as a daemon In the background](https://github.com/azlux/botamusique/wiki/Run-botamusique-as-a-daemon-In-the-background).
-
-**For the detailed manual of using botamusique, please see the [wiki](https://github.com/azlux/botamusique/wiki).**
-
-## Operate the bot
-
-You can control the bot by both commands sent by text message and the web interface.
-
-By default, all commands start with `!`. You can type `!help` in the text message to see the full list of commands supported, or see the examples on the [wiki page](https://github.com/azlux/botamusique/wiki/Command-Help-and-Examples).
-
-The web interface can be used if you'd like an intuitive way of interacting with the bot. Through it is fairly straightforward, a walk-through can be found on the [wiki page](https://github.com/azlux/botamusique/wiki/Web-interface-walk-through).
-
-## Update
-
-If you enable `auto_check_update`, the bot will check for updates every time it starts.
-If you are using the recommended install, you can send `!update` to the bot (command by default).
-
-If you are using git, you need to update manually:
-```
-git pull --all
-git submodule update
-venv/bin/pip install --upgrade -r requirements.txt
-```
-
-
-## Known issues
-
-1. During installation, you may encounter the following error:
-```
-ImportError: libtiff.so.5: cannot open shared object file: No such file or directory
-```
-You need to install a missing library: `apt install libtiff5`
-
-2. In the beginning, you may encounter the following error even if you have installed all requirements:
-```
-Exception: Could not find opus library. Make sure it is installed.
-```
-You need to install the opus codec (not embedded in all system): `apt install libopus0`
-
-3. MacOS Users may encounter the following error:
-```
-ImportError: failed to find libmagic.  Check your installation
-```
-This is caused by missing `libmagic` binaries and can be solved by
 ```bash
-brew install libmagic
+mkdir -p config music
+# 复制 configuration.example.ini 为 config/config.ini 并修改
+docker compose up -d --pull always
+```
+
+> **完整部署教程**（含 config.ini 模板、验收清单、常见问题）见 [`deploy/`](deploy/) 目录，或直接使用 `deploy/deploy.sh` 一键脚本。
+
+### 必须修改的配置项
+
+| 配置 | 位置 | 说明 |
+|------|------|------|
+| `host` | `[server]` | Mumble 服务器地址 |
+| `admin` | `[bot]` | 你的 Mumble 用户名（管理员） |
+| `password` | `[webinterface]` | Web 面板管理员密码 |
+| `session_secret` | `[webinterface]` | 生成：`python3 -c "import secrets; print(secrets.token_hex(32))"` |
+| `access_address` | `[webinterface]` | Web 面板公网地址（二维码从这里取） |
+
+## 🎮 Mumble 命令
+
+| 命令 | 功能 |
+|------|------|
+| `!yun play [歌名]` | 搜索并立即播放网易云歌曲 |
+| `!yun add [歌名]` | 搜索并添加到播放列表 |
+| `!yun search [歌名]` | 搜索显示结果，`!sl [序号]` 选择 |
+| `!yun playid [id]` / `!yun addid [id]` | 按歌曲 ID 播放 / 添加 |
+| `!yun gedan [歌单名]` / `!yun gedanid [id]` | 搜索 / 按 ID 播放歌单 |
+| `!yun login` | 网易云二维码登录（VIP 歌曲需要） |
+| `!play [搜索词]` | 播放 YouTube / SoundCloud |
+| `!help` | 全部命令 |
+| `!duck on/off` | 说话自动降低音量开关 |
+
+## 🌐 Web 面板
+
+访问 `http://服务器:8181`（或反向代理域名）。
+
+- **登录**：管理员用 config 里的 `user`/`password`；普通用户由管理员在「账号管理」页注册
+- **网易云**：搜索歌曲 / 歌单 → 添加到播放列表；账号卡片扫码登录（VIP 歌曲）
+- **播放列表**：每首歌显示点歌人、来源类型、可拖动排序 / 置顶 / 删除
+- **音乐库**：浏览 / 上传本地音乐文件（需 config 开启 `upload_enabled`）
+
+### 反向代理（推荐，自动 HTTPS）
+
+```caddy
+# Caddyfile
+music.example.com {
+    reverse_proxy 127.0.0.1:8181
+}
+```
+
+## 🐳 本地构建镜像
+
+```bash
+# 需要 Docker，构建单容器融合镜像
+docker build -f Dockerfile.netease -t mumble-music-bot:latest .
+```
+
+## 📁 项目结构
 
 ```
-One may also install `python-magic-bin` instead of `python-magic`.
-
-5. If you have a large amount of music files (>1000), it may take some time for the bot to boot, since
-it will build up the cache for the music library on booting. You may want to disable this auto-scanning by
-setting ``refresh_cache_on_startup=False`` in `[bot]` section and control the scanning manually by
-``!rescan`` command and the *Rescan Files* button on the web interface.
-
-6. Alpine Linux requires some extra dependencies during the installation (in order to compile Pillow):
+├── netease.py              # 网易云 API 客户端
+├── netease_cmd.py          # !yun Mumble 命令
+├── media/netease_item.py   # 网易云下载播放媒体类型（缓存命中）
+├── interface.py            # Web 面板 Flask 后端（账号系统/防暴力/网易云路由）
+├── command.py              # Mumble 命令注册
+├── web/                    # 前端（侧边栏+播放条深色界面）
+├── netease-api/            # 网易云 Node API（融合进镜像）
+├── Dockerfile.netease      # 单容器构建（supervisord 管双进程）
+└── deploy/                 # 可移植部署包（README + 一键脚本 + agent 提示词）
 ```
-python3-dev musl-lib libmagic jpeg-dev zlib-dev gcc
-```
-For more information, see [#122](https://github.com/azlux/botamusique/issues/122).
 
-## _I need help!_
+## 📄 License
 
-If you ran into some problems in using the bot, or discovered bugs and want to talk to us, you may
-
- - Start a new issue,
- - Ask in the Matrix channel of Mumble [#mumble:matrix.org](https://matrix.to/#/#mumble:matrix.org) (we are usually there to help).
-
-## Contributors
-If you want to help us develop, you're welcome to fork and submit pull requests (fixes and new features).
-We are looking for people helping us translating the bot. If you'd like to add a new language or fix errors in existed translations,
-feel free to catch us in the IRC channel #mumble, or just email us!
-
-The following people joined as collaborators for a faster development, big thanks to them:
-- @TerryGeng
-- @mertkutay
-
-Feel free to ask me if you want to help actively without using pull requests.
+MIT（上游 botamusique 为 MIT，netease-api 为 [0525sd/neteasecloudmusicapi](https://gitlab.com/0525sd/neteasecloudmusicapi) 的 fork）
