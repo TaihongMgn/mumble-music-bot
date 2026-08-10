@@ -537,44 +537,44 @@
          data-role-admin="{{ tr('admin_role') }}"
          data-role-user="{{ tr('user_role') }}">
         <div class="container mb-3">
-            <h2 id="accounts"><i class="fas fa-users-cog mr-2" aria-hidden="true"></i>{{ tr('nav_accounts') }}</h2>
+            <h2 id="accounts" class="mb-3"><i class="fas fa-users-cog mr-2" aria-hidden="true"></i>{{ tr('nav_accounts') }}</h2>
+
+            <div id="accounts-register-msg" class="d-none mb-3"></div>
 
             <div class="card mb-3">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-user-plus mr-2" aria-hidden="true"></i>{{ tr('register_title') }}</h3>
-                </div>
                 <div class="card-body">
-                    <div id="accounts-register-msg" class="d-none"></div>
-                    <form id="accounts-register-form" class="form-inline">
-                        <div class="form-group mr-2 mb-2">
-                            <label class="sr-only" for="accounts-username">{{ tr('username') }}</label>
+                    <form id="accounts-register-form" class="row align-items-end">
+                        <div class="col-sm-6 col-md-4 mb-2">
+                            <label class="mb-1 small text-muted" for="accounts-username">{{ tr('username') }}</label>
                             <input type="text" class="form-control" id="accounts-username" placeholder="{{ tr('username') }}"
-                                   pattern="[A-Za-z0-9_]+" required>
+                                   pattern="[A-Za-z0-9_]+" autocomplete="off" required>
                         </div>
-                        <div class="form-group mr-2 mb-2">
-                            <label class="sr-only" for="accounts-password">{{ tr('password') }}</label>
+                        <div class="col-sm-6 col-md-3 mb-2">
+                            <label class="mb-1 small text-muted" for="accounts-password">{{ tr('password') }}</label>
                             <input type="password" class="form-control" id="accounts-password" placeholder="{{ tr('password') }}" minlength="6" required>
                         </div>
-                        <div class="form-group mr-2 mb-2">
-                            <label class="sr-only" for="accounts-confirm">{{ tr('register_confirm') }}</label>
+                        <div class="col-sm-6 col-md-3 mb-2">
+                            <label class="mb-1 small text-muted" for="accounts-confirm">{{ tr('register_confirm') }}</label>
                             <input type="password" class="form-control" id="accounts-confirm" placeholder="{{ tr('register_confirm') }}" minlength="6" required>
                         </div>
-                        <button type="submit" class="btn btn-success mb-2"><i class="fas fa-user-plus mr-1"></i>{{ tr('register_btn') }}</button>
+                        <div class="col-sm-6 col-md-2 mb-2">
+                            <button type="submit" class="btn btn-success btn-block"><i class="fas fa-user-plus mr-1"></i>{{ tr('register_btn') }}</button>
+                        </div>
                     </form>
                 </div>
             </div>
 
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-users mr-2" aria-hidden="true"></i>{{ tr('account_list') }}</h3>
+            <div class="card">
+                <div class="card-header py-2">
+                    <h3 class="card-title h6 mb-0"><i class="fas fa-users mr-2" aria-hidden="true"></i>{{ tr('account_list') }}</h3>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>{{ tr('username') }}</th>
+                                <th class="pl-3">{{ tr('username') }}</th>
                                 <th>{{ tr('account_role') }}</th>
-                                <th class="text-right">{{ tr('actions') }}</th>
+                                <th class="text-right pr-3">{{ tr('actions') }}</th>
                             </tr>
                         </thead>
                         <tbody id="accounts-table-body"></tbody>

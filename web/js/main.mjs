@@ -1822,6 +1822,9 @@ function switchView(viewId, activeLink = null) {
   }
   view.classList.add('active');
   navLinks.forEach((link) => link.classList.toggle('active', activeLink ? link === activeLink : link.dataset.view === viewId));
+  // 切换视图后滚回顶部，避免停留在旧视图的滚动位置
+  window.scrollTo(0, 0);
+  document.querySelector('.main-content').scrollTop = 0;
 }
 
 navLinks.forEach((link) => link.addEventListener('click', (event) => {
