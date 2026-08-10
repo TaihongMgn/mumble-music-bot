@@ -58,15 +58,17 @@ def _send(bot, text, key, **kwargs):
 
 
 def _song_label(song):
-    if not song:
-        return ""
-    artist = song.get("artist") or ""
-    return "{} - {}".format(song.get("name", ""), artist)
+    return (song or {}).get("name", "")
 
 
-def _queue_url(bot, user, url, title=""):
+def _queue_song(bot, user, song_id, title="", artist=""):
     music_wrapper = get_cached_wrapper_from_scrap(
-        type="radio", url=url, name=title, user=user)
+        type="netease",
+        song_id=song_id,
+        title=title,
+        artist=artist,
+        user=user,
+    )
     var.playlist.append(music_wrapper)
     log.info("cmd: add Netease item to playlist: %s", music_wrapper.format_debug_string())
     if len(var.playlist) == 2:
@@ -103,7 +105,13 @@ def _play_or_add_song(bot, user, text, command, song, add_only=False):
         _send(bot, text, "netease_play_error")
         return
     try:
-        _queue_url(bot, user, url, title=_song_label(song))
+        _queue_song(
+            bot,
+            user,
+            song.get("id"),
+            title=song.get("name", ""),
+            artist=song.get("artist", ""),
+        )
     except Exception:
         log.exception("Could not add Netease song to playlist")
         _send(bot, text, "netease_play_error")
@@ -157,9 +165,10 @@ def cmd_yun_search(bot, user, text, command, parameter):
             log.warning("Could not resolve Netease song URL: %s", song.get("id"))
         if url:
             command_module.song_shortlist.append({
-                "type": "url",
-                "url": url,
-                "title": _song_label(song),
+                "type": "netease",
+                "song_id": song.get("id"),
+                "title": song.get("name", ""),
+                "artist": song.get("artist", ""),
             })
             index = len(command_module.song_shortlist)
             status = tr("netease_available")
@@ -246,7 +255,13 @@ def cmd_yun_gedanid(bot, user, text, command, parameter):
         try:
             url = client.get_song_url(track.get("id"), cookie)
             if url:
-                _queue_url(bot, user, url)
+                _queue_song(
+                    bot,
+                    user,
+                    track.get("id"),
+                    title=track.get("name", ""),
+                    artist=track.get("artist", ""),
+                )
                 count += 1
         except (requests.RequestException, ValueError, TypeError):
             log.warning("Could not add Netease playlist track: %s", track.get("id"))

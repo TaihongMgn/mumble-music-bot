@@ -19,6 +19,7 @@ from media.file import FileItem
 from media.url import URLItem
 from media.url_from_playlist import PlaylistURLItem
 from media.radio import RadioItem
+from media.netease_item import NeteaseItem
 from media.cache import get_cached_wrapper_from_scrap, get_cached_wrapper_by_id, get_cached_wrappers_by_tags, \
     get_cached_wrapper
 from database import MusicDatabase, Condition
@@ -276,6 +277,9 @@ def playlist():
             if item.artist:
                 artist = item.artist
             duration = item.duration
+        elif isinstance(item, NeteaseItem):
+            artist = item.artist or "??"
+            duration = item.duration
         elif isinstance(item, URLItem):
             path = f" <a href=\"{item.url}\"><i>{item.url}</i></a>"
             duration = item.duration
@@ -418,21 +422,25 @@ def _add_netease_tracks(client, cookie, tracks, playlist_user):
             if not song_id:
                 skipped += 1
                 continue
+            title = (track.get('name', '') or '') if isinstance(track, dict) else ''
+            artist = (track.get('artist', '') or '') if isinstance(track, dict) else ''
+            # Probe availability here so unavailable/VIP tracks are not queued.
             try:
                 url = client.get_song_url(song_id, cookie)
             except (requests.RequestException, ValueError, TypeError):
-                log.warning("Could not add Netease playlist track: %s", song_id)
+                log.warning("Could not get Netease song URL: %s", song_id)
                 skipped += 1
                 continue
             if not url:
                 skipped += 1
                 continue
-            title = (track.get('name', '') or '') if isinstance(track, dict) else ''
-            artist = (track.get('artist', '') or '') if isinstance(track, dict) else ''
-            name = f"{title} - {artist}" if title and artist else title
             try:
                 music_wrapper = get_cached_wrapper_from_scrap(
-                    type='radio', url=url, name=name, user=playlist_user)
+                    type='netease',
+                    song_id=song_id,
+                    title=title,
+                    artist=artist,
+                    user=playlist_user)
                 var.playlist.append(music_wrapper)
                 added += 1
                 try:
@@ -443,7 +451,7 @@ def _add_netease_tracks(client, cookie, tracks, playlist_user):
                     should_start_download = True
                 log.info("web: add Netease playlist item to playlist: " +
                          music_wrapper.format_debug_string())
-            except (requests.RequestException, ValueError, TypeError):
+            except Exception:
                 log.exception("web: could not add Netease playlist track: %s", song_id)
                 skipped += 1
     if should_start_download:
@@ -568,6 +576,13 @@ def post():
                 rebuild_kwargs = {}
                 if item_obj.type == 'radio':
                     rebuild_kwargs = {'type': 'radio', 'url': item_obj.url, 'name': item_obj.title}
+                elif item_obj.type == 'netease':
+                    rebuild_kwargs = {
+                        'type': 'netease',
+                        'song_id': item_obj.song_id,
+                        'title': item_obj.title,
+                        'artist': item_obj.artist,
+                    }
                 elif item_obj.type == 'url':
                     rebuild_kwargs = {'type': 'url', 'url': item_obj.url}
                 elif item_obj.type == 'file':
@@ -609,13 +624,17 @@ def post():
                 detail = client.get_song_detail(song_id)
                 title = (detail.get('name', '') or '') if detail else ''
                 artist = (detail.get('artist', '') or '') if detail else ''
-                name = f"{title} - {artist}" if title else ""
             except (requests.RequestException, ValueError, TypeError):
                 log.exception("web: could not get Netease song URL")
                 abort(502)
             if not url:
                 abort(400)
-            music_wrapper = get_cached_wrapper_from_scrap(type='radio', url=url, name=name, user=user)
+            music_wrapper = get_cached_wrapper_from_scrap(
+                type='netease',
+                song_id=song_id,
+                title=title,
+                artist=artist,
+                user=user)
             var.playlist.append(music_wrapper)
             if detail:
                 _add_netease_listening_time(detail.get('duration'))

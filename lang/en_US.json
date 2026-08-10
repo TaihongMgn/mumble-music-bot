@@ -43,6 +43,8 @@
         "not_in_my_channel": "You're not in my channel!",
         "not_playing": "Nothing is playing right now.",
         "now_playing": "Playing {item}",
+        "netease_song_item": "<b>{title}</b> - {artist}, added by <i>{user}</i>.",
+        "netease": "Netease",
         "page_instruction": "Page {current}/{total}. Use <i>!{command} {{page}}</i> to navigate.",
         "paused": "Music paused.",
         "playlist_fetching_failed": "Unable to fetch the playlist!",
