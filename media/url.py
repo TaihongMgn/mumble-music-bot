@@ -160,67 +160,113 @@ class URLItem(BaseItem):
             raise ValidationFailedError(tr('unable_download', item=self.format_title()))
 
     def _download(self):
-        util.clear_tmp_folder(var.tmp_folder, var.config.getint('bot', 'tmp_folder_max_size'))
-
         self.downloading = True
         base_path = var.tmp_folder + self.id
         save_path = base_path
 
-        # Download only if music is not existed
-        self.ready = "preparing"
-
-        self.log.info("bot: downloading url (%s) %s " % (self.title, self.url))
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': base_path,
-            'noplaylist': True,
-            'writethumbnail': True,
-            'updatetime': False,
-            'verbose': var.config.getboolean('debug', 'youtube_dl'),
-            'postprocessors': [{
-                'key': 'FFmpegThumbnailsConvertor',
-                'format': 'jpg',
-                'when': 'before_dl'
-            }]
-        }
-
-        cookie = var.config.get('youtube_dl', 'cookie_file')
-        if cookie:
-            ydl_opts['cookiefile'] = var.config.get('youtube_dl', 'cookie_file')
-
-        user_agent = var.config.get('youtube_dl', 'user_agent')
-        if user_agent:
-            youtube_dl.utils.std_headers['User-Agent'] = var.config.get('youtube_dl', 'user_agent')
-
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            attempts = var.config.getint('bot', 'download_attempts')
-            download_succeed = False
-            for i in range(attempts):
-                self.log.info("bot: download attempts %d / %d" % (i + 1, attempts))
+        def cleanup_download_files():
+            for filename in glob.glob(base_path + "*"):
                 try:
-                    ydl.extract_info(self.url)
-                    download_succeed = True
-                    break
-                except:
-                    error_traceback = traceback.format_exc().split("During")[0]
-                    error = error_traceback.rstrip().split("\n")[-1]
-                    self.log.error("bot: download failed with error:\n %s" % error)
+                    os.remove(filename)
+                except FileNotFoundError:
+                    continue
+                except OSError as error:
+                    self.log.warning(
+                        "url: could not remove temporary file %s: %s",
+                        filename,
+                        error,
+                    )
 
-            if download_succeed:
-                self.path = save_path
-                self.ready = "yes"
-                self.log.info(
-                    "bot: finished downloading url (%s) %s, saved to %s." % (self.title, self.url, self.path))
-                self.downloading = False
-                self._read_thumbnail_from_file(base_path + ".jpg")
-                self.version += 1  # notify wrapper to save me
-                return True
-            else:
-                for f in glob.glob(base_path + "*"):
-                    os.remove(f)
-                self.ready = "failed"
-                self.downloading = False
-                raise PreparationFailedError(tr('unable_download', item=self.format_title()))
+        self.ready = "preparing"
+        self.log.info("bot: downloading url (%s) %s " % (self.title, self.url))
+
+        try:
+            with util.tmp_folder_quota(
+                    var.tmp_folder,
+                    var.config.getint('bot', 'tmp_folder_max_size'),
+                    protected_paths=(base_path,)) as quota:
+                # A zero-byte cache cannot retain a downloaded media file. Do
+                # not start a downloader that would create one transiently.
+                quota.ensure_capacity(1)
+
+                def check_tmp_folder_limit(status):
+                    filename = status.get('filename')
+                    if filename:
+                        quota.protect(filename)
+                    quota.ensure_capacity()
+
+                ydl_opts = {
+                    'format': 'bestaudio/best',
+                    'outtmpl': base_path,
+                    'noplaylist': True,
+                    'writethumbnail': True,
+                    'updatetime': False,
+                    'verbose': var.config.getboolean('debug', 'youtube_dl'),
+                    'progress_hooks': [check_tmp_folder_limit],
+                    'postprocessors': [{
+                        'key': 'FFmpegThumbnailsConvertor',
+                        'format': 'jpg',
+                        'when': 'before_dl'
+                    }]
+                }
+
+                cookie = var.config.get('youtube_dl', 'cookie_file')
+                if cookie:
+                    ydl_opts['cookiefile'] = var.config.get(
+                        'youtube_dl', 'cookie_file')
+
+                user_agent = var.config.get('youtube_dl', 'user_agent')
+                if user_agent:
+                    youtube_dl.utils.std_headers['User-Agent'] = var.config.get(
+                        'youtube_dl', 'user_agent')
+
+                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                    attempts = var.config.getint('bot', 'download_attempts')
+                    download_succeed = False
+                    for i in range(attempts):
+                        self.log.info(
+                            "bot: download attempts %d / %d", i + 1, attempts)
+                        try:
+                            ydl.extract_info(self.url)
+                            download_succeed = True
+                            break
+                        except util.TmpFolderLimitError:
+                            raise
+                        except Exception:
+                            error_traceback = traceback.format_exc().split("During")[0]
+                            error = error_traceback.rstrip().split("\n")[-1]
+                            self.log.error(
+                                "bot: download failed with error:\n %s", error)
+
+                    if not download_succeed:
+                        cleanup_download_files()
+                        self.ready = "failed"
+                        raise PreparationFailedError(
+                            tr('unable_download', item=self.format_title()))
+
+                    # Postprocessors can create files without another progress
+                    # callback; protect every output before the final quota check.
+                    for filename in glob.glob(base_path + "*"):
+                        quota.protect(filename)
+                    quota.ensure_capacity()
+                    self.path = save_path
+                    self.ready = "yes"
+                    self.log.info(
+                        "bot: finished downloading url (%s) %s, saved to %s.",
+                        self.title,
+                        self.url,
+                        self.path)
+                    self._read_thumbnail_from_file(base_path + ".jpg")
+                    self.version += 1  # notify wrapper to save me
+                    return True
+        except util.TmpFolderLimitError as error:
+            self.log.error("url: download exceeds tmp_folder_max_size: %s", error)
+            cleanup_download_files()
+            self.ready = "failed"
+            raise PreparationFailedError(
+                tr('unable_download', item=self.format_title()))
+        finally:
+            self.downloading = False
 
     def _read_thumbnail_from_file(self, path_thumbnail):
         if os.path.isfile(path_thumbnail):

@@ -163,33 +163,48 @@ class NeteaseItem(BaseItem):
         return True
 
     def _download(self):
-        util.clear_tmp_folder(
-            var.tmp_folder,
-            var.config.getint('bot', 'tmp_folder_max_size'))
         self.downloading = True
         self.ready = 'preparing'
         partial_path = self.path + '.part'
+        response = None
 
         try:
-            self.log.info(
-                "netease: downloading %s - %s", self.title, self.artist)
-            response = requests.get(
-                self.url,
-                stream=True,
-                timeout=30,
-                headers={'User-Agent': 'Mozilla/5.0'},
-            )
-            response.raise_for_status()
-            with open(partial_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        file.write(chunk)
-            response.close()
-            os.replace(partial_path, self.path)
-            self.ready = 'yes'
-            self.version += 1  # notify wrapper to save the 'yes' state
-            self.log.info("netease: finished downloading %s", self.path)
-        except (requests.RequestException, OSError) as error:
+            with util.tmp_folder_quota(
+                    var.tmp_folder,
+                    var.config.getint('bot', 'tmp_folder_max_size'),
+                    protected_paths=(self.path, partial_path)) as quota:
+                self.log.info(
+                    "netease: downloading %s - %s", self.title, self.artist)
+                response = requests.get(
+                    self.url,
+                    stream=True,
+                    timeout=30,
+                    headers={'User-Agent': 'Mozilla/5.0'},
+                )
+                response.raise_for_status()
+
+                content_length = response.headers.get('content-length')
+                try:
+                    content_length = int(content_length) if content_length else 0
+                except (TypeError, ValueError):
+                    content_length = 0
+                if content_length:
+                    quota.ensure_capacity(content_length)
+
+                with open(partial_path, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            # Check before each write so an unknown or incorrect
+                            # Content-Length cannot grow the directory unboundedly.
+                            quota.ensure_capacity(len(chunk))
+                            file.write(chunk)
+
+                os.replace(partial_path, self.path)
+                quota.ensure_capacity()
+                self.ready = 'yes'
+                self.version += 1  # notify wrapper to save the 'yes' state
+                self.log.info("netease: finished downloading %s", self.path)
+        except (requests.RequestException, OSError, util.TmpFolderLimitError) as error:
             self.log.error("netease: download failed: %s", error)
             self.ready = 'failed'
             try:
@@ -202,6 +217,8 @@ class NeteaseItem(BaseItem):
             raise PreparationFailedError(
                 tr('unable_download', item=self.format_title()))
         finally:
+            if response is not None:
+                response.close()
             self.downloading = False
 
         return True

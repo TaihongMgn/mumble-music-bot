@@ -8,6 +8,7 @@ import magic
 import os
 import io
 import sys
+import threading
 import variables as var
 import zipfile
 import re
@@ -516,56 +517,174 @@ class VolumeHelper:
         return (10 ** (dB / 20) - 10 ** (-35 / 20)) / (1 - 10 ** (-35 / 20))
 
 
-def get_size_folder(path):
-    global log
+_TMP_FOLDER_SIZE_UNIT = 1024 * 1024
+_TMP_FOLDER_LOCKS = {}
+_TMP_FOLDER_LOCKS_LOCK = threading.Lock()
 
-    folder_size = 0
-    for (path, dirs, files) in os.walk(path):
-        for file in files:
-            filename = os.path.join(path, file)
+
+class TmpFolderLimitError(Exception):
+    """Raised when a download cannot fit within tmp_folder_max_size."""
+
+
+def _tmp_folder_lock(path):
+    lock_path = os.path.realpath(os.path.abspath(path or '.'))
+    with _TMP_FOLDER_LOCKS_LOCK:
+        lock = _TMP_FOLDER_LOCKS.get(lock_path)
+        if lock is None:
+            lock = threading.RLock()
+            _TMP_FOLDER_LOCKS[lock_path] = lock
+        return lock
+
+
+def _normalise_paths(paths):
+    return {
+        os.path.realpath(os.path.abspath(path))
+        for path in (paths or ())
+        if path
+    }
+
+
+def _iter_folder_files(path):
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            fullpath = os.path.join(root, filename)
             try:
-                folder_size += os.path.getsize(filename)
+                stat = os.stat(fullpath)
             except (FileNotFoundError, OSError):
                 continue
-    return int(folder_size / (1024 * 1024))
+            yield fullpath, stat.st_size, stat.st_mtime
+
+
+def get_size_folder_bytes(path):
+    return sum(size for _, size, _ in _iter_folder_files(path))
+
+
+def get_size_folder(path):
+    return int(get_size_folder_bytes(path) / _TMP_FOLDER_SIZE_UNIT)
+
+
+def _is_protected(path, protected_paths):
+    return os.path.realpath(os.path.abspath(path)) in protected_paths
+
+
+def _remove_oldest_files(path, bytes_to_free, protected_paths=()):
+    if bytes_to_free <= 0:
+        return
+
+    candidates = [
+        (mtime, filename, file_size)
+        for filename, file_size, mtime in _iter_folder_files(path)
+        if not _is_protected(filename, protected_paths)
+    ]
+    candidates.sort(key=lambda item: item[0])
+
+    freed = 0
+    for _, filename, file_size in candidates:
+        try:
+            os.remove(filename)
+            freed += file_size
+            log.debug("Removing %s", filename)
+        except (FileNotFoundError, OSError) as error:
+            log.warning("Could not remove tmp file %s: %s", filename, error)
+        if freed >= bytes_to_free:
+            return
+
+
+def _clear_tmp_folder(path, size, protected_paths=()):
+    if size == -1:
+        return
+
+    protected_paths = _normalise_paths(protected_paths)
+    if size == 0:
+        for filename, _, _ in list(_iter_folder_files(path)):
+            if _is_protected(filename, protected_paths):
+                continue
+            try:
+                os.remove(filename)
+            except (FileNotFoundError, OSError) as error:
+                log.warning("Could not remove tmp file %s: %s", filename, error)
+        return
+
+    limit = size * _TMP_FOLDER_SIZE_UNIT
+    current = get_size_folder_bytes(path)
+    _remove_oldest_files(
+        path,
+        current - limit,
+        protected_paths,
+    )
 
 
 def clear_tmp_folder(path, size):
-    global log
+    """Remove old files until tmp_folder is at most ``size`` MB.
 
-    if size == -1:
-        return
-    elif size == 0:
-        for (path, dirs, files) in os.walk(path):
-            for file in files:
-                filename = os.path.join(path, file)
-                try:
-                    os.remove(filename)
-                except (FileNotFoundError, OSError):
-                    continue
-    else:
-        if get_size_folder(path=path) > size:
-            all_files = ""
-            for (path, dirs, files) in os.walk(path):
-                all_files = [os.path.join(path, file) for file in files]
-                # exclude invalid symlinks (linux)
-                all_files = [file for file in all_files if os.path.exists(file)]
-                all_files.sort(key=lambda x: os.path.getmtime(x))
-            size_tp = 0
-            for idx, file in enumerate(all_files):
-                size_tp += os.path.getsize(file)
-                if int(size_tp / (1024 * 1024)) > size:
-                    log.info("Cleaning tmp folder")
-                    to_remove = all_files[:idx]
-                    print(to_remove)
-                    for f in to_remove:
-                        log.debug("Removing " + f)
-                        try:
-                            os.remove(os.path.join(path, f))
-                        except (FileNotFoundError, OSError):
-                            continue
-                    return
+    ``-1`` keeps the existing unlimited-cache behavior and ``0`` clears all
+    files, subject to the operating system allowing the removals.
+    """
+    with _tmp_folder_lock(path):
+        _clear_tmp_folder(path, size)
 
+
+class TmpFolderQuota:
+    """Serialize downloads and enforce a byte-accurate folder quota."""
+
+    def __init__(self, path, size, protected_paths=()):
+        self.path = path
+        self.size = size
+        self._protected_paths = _normalise_paths(protected_paths)
+        self._lock = _tmp_folder_lock(path)
+        self._entered = False
+
+    def protect(self, path):
+        if path:
+            self._protected_paths.add(
+                os.path.realpath(os.path.abspath(path)))
+
+    def __enter__(self):
+        self._lock.acquire()
+        self._entered = True
+        try:
+            self.ensure_capacity(0)
+        except Exception:
+            self._entered = False
+            self._lock.release()
+            raise
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._entered:
+            self._entered = False
+            self._lock.release()
+        return False
+
+    def ensure_capacity(self, additional_bytes=0):
+        """Ensure ``additional_bytes`` can be written without exceeding quota."""
+        if self.size == -1:
+            return
+        if additional_bytes < 0:
+            raise ValueError("additional_bytes must not be negative")
+
+        limit = self.size * _TMP_FOLDER_SIZE_UNIT
+        if additional_bytes > limit:
+            raise TmpFolderLimitError(
+                "download is larger than tmp_folder_max_size")
+
+        current = get_size_folder_bytes(self.path)
+        required = current + additional_bytes
+        if required > limit:
+            _remove_oldest_files(
+                self.path,
+                required - limit,
+                self._protected_paths,
+            )
+            current = get_size_folder_bytes(self.path)
+
+        if current + additional_bytes > limit:
+            raise TmpFolderLimitError(
+                "tmp_folder has no room for the download")
+
+
+def tmp_folder_quota(path, size, protected_paths=()):
+    return TmpFolderQuota(path, size, protected_paths)
 
 def check_extra_config(config, template):
     extra = []
