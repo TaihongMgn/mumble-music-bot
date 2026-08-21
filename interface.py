@@ -1062,6 +1062,7 @@ def netease_qr_login_image():
 @requires_auth
 def post():
     global log
+    user = session.get('user', 'Remote Control')
 
     payload = request.get_json() if request.is_json else request.form
     if payload:
