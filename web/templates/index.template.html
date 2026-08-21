@@ -28,6 +28,10 @@
                 <i class="fas fa-music" aria-hidden="true"></i>
                 <span>{{ tr('nav_netease') }}</span>
             </a>
+            <a href="#" class="nav-link" data-view="view-ximalaya">
+              <i class="fas fa-headphones" aria-hidden="true"></i>
+              <span>{{ tr('nav_ximalaya') }}</span>
+            </a>
             <a href="#" class="nav-link" data-view="view-library">
                 <i class="fas fa-folder" aria-hidden="true"></i>
                 <span>{{ tr('nav_library_upload') }}</span>
@@ -309,6 +313,29 @@
         </div>
     </div>
         </div>
+
+        <div id="view-ximalaya" class="app-view">
+    <div class="netease-card-wrap">
+        <div class="card" id="add-ximalaya-card"
+             data-resolving="{{ tr('ximalaya_web_resolving') }}"
+             data-free="{{ tr('ximalaya_web_free') }}"
+             data-vip="{{ tr('ximalaya_web_vip') }}"
+             data-tracks="{{ tr('ximalaya_web_album_tracks') }}"
+             data-add-album="{{ tr('ximalaya_web_add_album') }}">
+          <div class="card-body">
+            <h3 class="card-title"><i class="fas fa-headphones mr-2" aria-hidden="true"></i>{{ tr('nav_ximalaya') }}</h3>
+            <div class="input-group mb-2">
+              <input type="text" class="form-control" id="ximalaya-input" placeholder="{{ tr('ximalaya_web_placeholder') }}">
+              <div class="input-group-append">
+                <button type="button" class="btn btn-primary" id="ximalaya-resolve-btn">{{ tr('ximalaya_web_resolve') }}</button>
+              </div>
+            </div>
+            <div id="ximalaya-result" class="mt-3"></div>
+            <small class="text-muted">{{ tr('ximalaya_web_usage') }}</small>
+          </div>
+        </div>
+    </div>
+</div>
 
         <div id="view-library" class="app-view">
     <div class="container mb-3">

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+﻿#!/usr/bin/python3
 import base64
 import sqlite3
 from functools import wraps
@@ -577,6 +577,74 @@ def netease_search():
         log.exception("web: Netease search failed")
         return jsonify({'songs': [], 'error': tr_web('netease_search_error')}), 502
 
+_XM_SOUND_RE = re.compile(r'ximalaya\.com/(?:\d+/)?sound/(\d+)', re.IGNORECASE)
+_XM_ALBUM_RE = re.compile(r'ximalaya\.com/(?:\d+/)?album/(\d+)', re.IGNORECASE)
+_XM_UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36'}
+
+
+@web.route("/api/ximalaya/resolve", methods=['GET'])
+def ximalaya_resolve():
+    value = (request.args.get('value') or '').strip()
+    if not value:
+        return jsonify({'error': tr_web('ximalaya_web_error')}), 400
+    m = _XM_SOUND_RE.search(value)
+    if not m:
+        m = _XM_ALBUM_RE.search(value)
+        kind = 'album'
+    else:
+        kind = 'track'
+    if not m and re.match(r'^\d+$', value):
+        kind = 'track'
+        track_id = value
+    elif kind == 'track':
+        track_id = m.group(1)
+    elif kind == 'album':
+        album_id = m.group(1)
+    else:
+        return jsonify({'error': tr_web('ximalaya_web_error')}), 400
+
+    try:
+        if kind == 'track':
+            resp = requests.get(
+                'https://m.ximalaya.com/tracks/{}.json'.format(track_id),
+                headers=_XM_UA, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            return jsonify({
+                'kind': 'track',
+                'track_id': track_id,
+                'title': data.get('title', ''),
+                'artist': data.get('nickname', ''),
+                'duration': int(data.get('duration') or 0),
+                'is_paid': bool(data.get('is_paid', False)),
+            })
+        else:
+            resp = requests.get(
+                'https://www.ximalaya.com/revision/album/getTracksList',
+                params={'albumId': album_id, 'pageNum': 1, 'sort': 0},
+                headers={**_XM_UA, 'Referer': 'https://www.ximalaya.com/album/{}'.format(album_id)},
+                timeout=30)
+            resp.raise_for_status()
+            body = resp.json()
+            data = body.get('data') or {}
+            tracks = data.get('tracks') or []
+            preview = [{
+                'track_id': str(t.get('trackId', '')),
+                'title': t.get('title', ''),
+                'duration': int(t.get('duration') or 0),
+                'is_paid': bool(t.get('isPaid', False)),
+            } for t in tracks[:10]]
+            album_title = tracks[0].get('albumTitle', '') if tracks else ''
+            return jsonify({
+                'kind': 'album',
+                'album_id': album_id,
+                'album_title': album_title,
+                'total': int(data.get('trackTotalCount') or 0),
+                'tracks': preview,
+            })
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: ximalaya resolve failed")
+        return jsonify({'error': tr_web('ximalaya_web_error')}), 502
 
 def _extract_netease_playlist_id(value):
     value = str(value or '').strip()
@@ -867,7 +935,7 @@ def post():
                 wrapper = var.playlist[index]
                 item_obj = wrapper.item()
                 target = current if index < current else current + 1
-                # 先保存重建信息（remove 会释放 radio 等非持久化 item 的缓存）
+                # 鍏堜繚瀛橀噸寤轰俊鎭紙remove 浼氶噴鏀?radio 绛夐潪鎸佷箙鍖?item 鐨勭紦瀛橈級
                 rebuild_kwargs = {}
                 if item_obj.type == 'radio':
                     rebuild_kwargs = {'type': 'radio', 'url': item_obj.url, 'name': item_obj.title}
@@ -885,13 +953,13 @@ def post():
                 else:
                     rebuild_kwargs = {'type': item_obj.type, 'url': item_obj.url}
                 var.playlist.remove(index)
-                # 重建 wrapper（保持原 item 在缓存中，避免渲染时 ItemNotCachedError）
+                # 閲嶅缓 wrapper锛堜繚鎸佸師 item 鍦ㄧ紦瀛樹腑锛岄伩鍏嶆覆鏌撴椂 ItemNotCachedError锛?
                 music_wrapper = get_cached_wrapper_from_scrap(user=user, **rebuild_kwargs)
                 var.playlist.insert(target, music_wrapper)
                 log.info("web: move playlist item next: " + music_wrapper.format_debug_string())
-                # 注意：这里不能调 var.bot.interrupt()
-                # interrupt() 会杀掉 ffmpeg 线程，loop 检测到 last_ffmpeg_err 非空时
-                # 会删除当前播放歌曲（mumbleBot.py 约 565-575 行），导致队列丢歌。
+                # 娉ㄦ剰锛氳繖閲屼笉鑳借皟 var.bot.interrupt()
+                # interrupt() 浼氭潃鎺?ffmpeg 绾跨▼锛宭oop 妫€娴嬪埌 last_ffmpeg_err 闈炵┖鏃?
+                # 浼氬垹闄ゅ綋鍓嶆挱鏀炬瓕鏇诧紙mumbleBot.py 绾?565-575 琛岋級锛屽鑷撮槦鍒椾涪姝屻€?
 
         elif 'add_url' in payload:
             music_wrapper = get_cached_wrapper_from_scrap(type='url', url=payload['add_url'], user=user)
@@ -936,7 +1004,64 @@ def post():
             log.info("web: add Netease item to playlist: " + music_wrapper.format_debug_string())
             if len(var.playlist) == 2:
                 var.bot.async_download_next()
-
+        elif 'add_ximalaya' in payload:
+            xm_payload = payload['add_ximalaya']
+            if isinstance(xm_payload, str):
+                try:
+                    xm_payload = json.loads(xm_payload)
+                except ValueError:
+                    abort(400)
+            try:
+                if xm_payload.get('kind') == 'album':
+                    album_id = xm_payload.get('album_id', '')
+                    album_title = xm_payload.get('album_title', '')
+                    page_num = 1
+                    added = 0
+                    while True:
+                        resp = requests.get(
+                            'https://www.ximalaya.com/revision/album/getTracksList',
+                            params={'albumId': album_id, 'pageNum': page_num, 'sort': 0},
+                            headers={**_XM_UA, 'Referer': 'https://www.ximalaya.com/album/{}'.format(album_id)},
+                            timeout=30)
+                        resp.raise_for_status()
+                        body = resp.json()
+                        data = body.get('data') or {}
+                        tracks = data.get('tracks') or []
+                        if not tracks:
+                            break
+                        for t in tracks:
+                            music_wrapper = get_cached_wrapper_from_scrap(
+                                type='ximalaya',
+                                track_id=str(t.get('trackId', '')),
+                                title=t.get('title', ''),
+                                artist=t.get('anchorName', ''),
+                                user=user)
+                            var.playlist.append(music_wrapper)
+                            added += 1
+                        page_size = int(data.get('pageSize') or 30)
+                        total = int(data.get('trackTotalCount') or 0)
+                        if page_num * page_size >= total or len(tracks) < page_size:
+                            break
+                        page_num += 1
+                    log.info("web: add Ximalaya album %s (%d tracks)", album_id, added)
+                    if len(var.playlist) == 2:
+                        var.bot.async_download_next()
+                    return jsonify({'ok': True, 'added': added})
+                else:
+                    track_id = str(xm_payload.get('track_id', ''))
+                    title = xm_payload.get('title', '')
+                    artist = xm_payload.get('artist', '')
+                    music_wrapper = get_cached_wrapper_from_scrap(
+                        type='ximalaya', track_id=track_id, title=title,
+                        artist=artist, user=user)
+                    var.playlist.append(music_wrapper)
+                    log.info("web: add Ximalaya track: " + music_wrapper.format_debug_string())
+                    if len(var.playlist) == 2:
+                        var.bot.async_download_next()
+                    return jsonify({'ok': True, 'added': 1})
+            except (requests.RequestException, ValueError, TypeError):
+                log.exception("web: could not add Ximalaya item")
+                abort(502)
         elif 'save_netease_playlist' in payload:
             playlist_payload = payload['save_netease_playlist']
             if isinstance(playlist_payload, str):

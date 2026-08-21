@@ -1,4 +1,4 @@
-import 'jquery/src/jquery.js';
+﻿import 'jquery/src/jquery.js';
 import 'jquery-migrate/src/migrate.js';
 import Popper from 'popper.js/dist/esm/popper.js';
 import {
@@ -127,7 +127,7 @@ function addPlaylistItem(item) {
   pl_index_element.html(item.index + 1);
   pl_title_element.html(item.title);
   pl_artist_element.html(item.artist);
-  pl_user_element.text(item.user ? '👤 ' + item.user : '');
+  pl_user_element.text(item.user ? '馃懁 ' + item.user : '');
   pl_user_element.toggleClass('d-none', !item.user);
   pl_type_element.html(item.type);
   pl_path_element.html(item.path);
@@ -1217,6 +1217,85 @@ if (neteaseSearchBtn) {
   });
 }
 
+// Ximalaya link resolve
+const ximalayaInput = document.getElementById('ximalaya-input');
+const ximalayaResolveBtn = document.getElementById('ximalaya-resolve-btn');
+const ximalayaResult = document.getElementById('ximalaya-result');
+const ximalayaCard = document.getElementById('add-ximalaya-card');
+
+if (ximalayaResolveBtn) {
+  ximalayaResolveBtn.addEventListener('click', async () => {
+    const value = ximalayaInput.value.trim();
+    if (!value) return;
+    ximalayaResult.innerHTML = `<div class="text-muted">${escapeNeteaseHtml(ximalayaCard.dataset.resolving || '解析中...')}</div>`;
+    try {
+      const response = await fetch(`/api/ximalaya/resolve?value=${encodeURIComponent(value)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        ximalayaResult.textContent = data.error || '';
+        return;
+      }
+      if (data.kind === 'track') {
+        const badgeClass = data.is_paid ? 'badge-warning text-dark' : 'badge-success';
+        const accessLabel = data.is_paid
+          ? escapeNeteaseHtml(ximalayaCard.dataset.vip || '付费')
+          : escapeNeteaseHtml(ximalayaCard.dataset.free || '免费');
+        ximalayaResult.innerHTML = `
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-headphones mr-2 text-muted" aria-hidden="true"></i>
+            <div class="flex-grow-1">
+              <div><strong>${escapeNeteaseHtml(data.title)}</strong> - ${escapeNeteaseHtml(data.artist)}</div>
+              <small class="badge ${badgeClass}">${accessLabel}</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary ml-2 ximalaya-add-track-btn"
+              data-id="${escapeNeteaseHtml(data.track_id)}"
+              data-title="${escapeNeteaseHtml(data.title)}"
+              data-artist="${escapeNeteaseHtml(data.artist)}">+</button>
+          </div>
+        `;
+      } else {
+        const tracksHtml = (data.tracks || []).map((t) => {
+          const badge = t.is_paid
+            ? `<small class="badge badge-warning text-dark ml-1">${escapeNeteaseHtml(ximalayaCard.dataset.vip || '付费')}</small>`
+            : `<small class="badge badge-success ml-1">${escapeNeteaseHtml(ximalayaCard.dataset.free || '免费')}</small>`;
+          return `<div class="mb-1">${escapeNeteaseHtml(t.title)}${badge}</div>`;
+        }).join('');
+        ximalayaResult.innerHTML = `
+          <div class="mb-2">
+            <div><strong>${escapeNeteaseHtml(data.album_title)}</strong>
+              <span class="text-muted ml-2">${escapeNeteaseHtml((ximalayaCard.dataset.tracks || '{count} 集').replace('{count}', data.total))}</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary mt-2 ximalaya-add-album-btn"
+              data-id="${escapeNeteaseHtml(data.album_id)}"
+              data-title="${escapeNeteaseHtml(data.album_title)}">${escapeNeteaseHtml(ximalayaCard.dataset.addAlbum || '添加整个专辑')}</button>
+            <div class="mt-2">${tracksHtml}</div>
+          </div>
+        `;
+      }
+      ximalayaResult.querySelectorAll('.ximalaya-add-track-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          request('post', {add_ximalaya: JSON.stringify({
+            kind: 'track',
+            track_id: button.dataset.id,
+            title: button.dataset.title,
+            artist: button.dataset.artist,
+          })});
+        });
+      });
+      ximalayaResult.querySelectorAll('.ximalaya-add-album-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          request('post', {add_ximalaya: JSON.stringify({
+            kind: 'album',
+            album_id: button.dataset.id,
+            album_title: button.dataset.title,
+          })});
+        });
+      });
+    } catch (error) {
+      console.error('Ximalaya resolve failed', error);
+    }
+  });
+}
 // Netease Cloud Music playlists
 const neteasePlaylistCard = document.getElementById('netease-playlist-card');
 const neteasePlaylistInput = document.getElementById('netease-playlist-input');
@@ -1291,7 +1370,7 @@ async function checkNeteaseQrLogin(key) {
       setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
     }
   } catch (error) {
-    // 网络抖动/API 慢时不要终止轮询，下一次 2 秒后再试
+    // 缃戠粶鎶栧姩/API 鎱㈡椂涓嶈缁堟杞锛屼笅涓€娆?2 绉掑悗鍐嶈瘯
     console.warn('Netease QR login check failed, will retry', error);
   } finally {
     neteaseQrChecking = false;
@@ -1356,7 +1435,7 @@ if (neteaseQrConfirmBtn) {
   neteaseQrConfirmBtn.addEventListener('click', confirmNeteaseQrLogin);
 }
 
-// 手动关闭弹窗时停止轮询，避免后台继续请求
+// 鎵嬪姩鍏抽棴寮圭獥鏃跺仠姝㈣疆璇紝閬垮厤鍚庡彴缁х画璇锋眰
 if (neteaseQrLoginModalElement) {
   neteaseQrLoginModalElement.addEventListener('hidden.bs.modal', function() {
     stopNeteaseQrPolling();
@@ -1429,7 +1508,7 @@ async function loadSessionUser() {
     const response = await fetch('/api/session_user');
     const data = await response.json();
     if (!response.ok) throw new Error('session user failed');
-    el.textContent = data.user ? '👤 ' + data.user : '';
+    el.textContent = data.user ? '馃懁 ' + data.user : '';
     if (data.is_admin) {
       const navLink = document.getElementById('nav-accounts-link');
       if (navLink) navLink.classList.remove('d-none');
@@ -1524,7 +1603,7 @@ if (accountsRegisterForm) {
   });
 }
 
-// 切到账号管理视图时刷新列表
+// 鍒囧埌璐﹀彿绠＄悊瑙嗗浘鏃跺埛鏂板垪琛?
 const navAccountsLink = document.getElementById('nav-accounts-link');
 if (navAccountsLink) {
   navAccountsLink.addEventListener('click', () => {
@@ -1822,13 +1901,13 @@ function switchView(viewId, activeLink = null) {
   }
   view.classList.add('active');
   navLinks.forEach((link) => link.classList.toggle('active', activeLink ? link === activeLink : link.dataset.view === viewId));
-  // 切换视图后滚回顶部，避免停留在旧视图的滚动位置
+  // 鍒囨崲瑙嗗浘鍚庢粴鍥為《閮紝閬垮厤鍋滅暀鍦ㄦ棫瑙嗗浘鐨勬粴鍔ㄤ綅缃?
   window.scrollTo(0, 0);
   document.querySelector('.main-content').scrollTop = 0;
 }
 
 navLinks.forEach((link) => link.addEventListener('click', (event) => {
-  if (!link.dataset.view) return;  // 非视图链接（如退出登录）正常跳转
+  if (!link.dataset.view) return;  // 闈炶鍥鹃摼鎺ワ紙濡傞€€鍑虹櫥褰曪級姝ｅ父璺宠浆
   event.preventDefault();
   switchView(link.dataset.view, link);
   if (link.dataset.scrollTarget) {
