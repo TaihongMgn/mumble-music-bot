@@ -73,6 +73,55 @@ def decrypt_filename(file_id, seed):
     return filename
 
 
+def _xm_load_cookie():
+    """读取喜马拉雅 cookie（与 interface.py 一致）。"""
+    if os.path.isdir('/config'):
+        path = '/config/ximalaya_cookie.txt'
+    else:
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            'config/ximalaya_cookie.txt')
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except (IOError, FileNotFoundError):
+        return ''
+
+
+def _fetch_vip_url(track_id, cookie):
+    """通过 mpay 接口获取会员音频 URL。"""
+    import time
+    ts = int(time.time())
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                      'AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/150.0.0.0 Safari/537.36',
+        'Cookie': cookie,
+    }
+    resp = requests.get(
+        'https://mpay.ximalaya.com/mobile/track/pay/{}/{}'.format(track_id, ts),
+        params={'device': 'pc', 'isBackend': 'true', '_': ts},
+        headers=headers,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    vip_info = resp.json()
+    if vip_info.get('ret') != 0 or not vip_info.get('fileId'):
+        return None
+    filename = decrypt_filename(vip_info['fileId'], vip_info['seed'])
+    sign, token, timestamp = decrypt_url_params(vip_info['ep'])
+    url = "{domain}/download/{apiVersion}{filename}?sign={sign}&token={token}&timestamp={timestamp}&buy_key={buyKey}&duration={duration}".format(
+        domain=vip_info['domain'],
+        apiVersion=vip_info['apiVersion'],
+        filename=filename,
+        sign=sign,
+        token=token,
+        timestamp=timestamp,
+        buy_key=vip_info['buyKey'],
+        duration=vip_info['duration'],
+    )
+    return url
+
+
 def ximalaya_item_builder(**kwargs):
     return XimalayaItem(
         kwargs['track_id'],
@@ -164,9 +213,26 @@ class XimalayaItem(BaseItem):
                 detail = self._fetch_detail()
                 if detail.get('is_paid'):
                     self.is_paid = True
+                    # 尝试用 cookie 获取会员播放链接
+                    cookie = _xm_load_cookie()
+                    if cookie:
+                        try:
+                            vip_url = _fetch_vip_url(self.track_id, cookie)
+                            if vip_url:
+                                self.url = vip_url
+                                self.title = detail.get('title', '') or self.title
+                                self.artist = detail.get('nickname', '') or self.artist
+                                self.duration = int(float(detail.get('duration', 0) or 0))
+                                self.thumbnail = detail.get('cover_url', '') or ''
+                                self.keywords = "{} {}".format(self.title, self.artist).strip()
+                                self.ready = 'validated'
+                                self.version += 1
+                                return True
+                        except (requests.RequestException, ValueError, TypeError, KeyError):
+                            log.exception("ximalaya: VIP URL fetch failed for %s", self.track_id)
+                    # 没有 cookie 或解密失败
                     self.ready = 'failed'
-                    raise ValidationFailedError(
-                        tr('ximalaya_paid_prompt'))
+                    raise ValidationFailedError(tr('ximalaya_paid_prompt'))
 
                 url = detail.get('play_path_64') or detail.get('play_path_32')
                 if not url:
