@@ -24,14 +24,14 @@
 
 ## 📦 部署（单容器）
 
-镜像已发布到 Docker Hub：`taihong422/mumble-music-bot:latest`（内含 bot + 网易云 API，supervisord 管理双进程）。
+镜像已发布到 Docker Hub：`taihong422/fx-music-bot:latest`（内含 bot + 网易云 API，supervisord 管理双进程）。
 
 ```yaml
 # docker-compose.yml
 services:
-  mumble-music-bot:
-    image: taihong422/mumble-music-bot:latest
-    container_name: mumble-music-bot
+  fx-music-bot:
+    image: taihong422/fx-music-bot:latest
+    container_name: fx-music-bot
     restart: unless-stopped
     ports:
       - "127.0.0.1:8181:8181"
@@ -99,7 +99,7 @@ music.example.com {
 
 ```bash
 # 需要 Docker，构建单容器融合镜像
-docker build -f Dockerfile.netease -t mumble-music-bot:latest .
+docker build -f Dockerfile.netease -t fx-music-bot:latest .
 ```
 
 ## 📁 项目结构
