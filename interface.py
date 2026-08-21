@@ -647,24 +647,26 @@ def ximalaya_resolve():
         return jsonify({'error': tr_web('ximalaya_web_error')}), 502
 
 # --- Ximalaya cookie management (simple functions, no class) ---
-_XM_COOKIE_FILE = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    var.config.get('ximalaya', 'cookie_file', fallback='config/ximalaya_cookie.txt'))
+def _xm_cookie_file():
+    return os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        var.config.get('ximalaya', 'cookie_file', fallback='config/ximalaya_cookie.txt'))
 
 
 def _xm_load_cookie():
     try:
-        with open(_XM_COOKIE_FILE, 'r', encoding='utf-8') as f:
+        with open(_xm_cookie_file(), 'r', encoding='utf-8') as f:
             return f.read().strip()
     except (IOError, FileNotFoundError):
         return ''
 
 
 def _xm_save_cookie(cookie_str):
-    parent = os.path.dirname(_XM_COOKIE_FILE)
+    path = _xm_cookie_file()
+    parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    with open(_XM_COOKIE_FILE, 'w', encoding='utf-8') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write(cookie_str.strip())
 
 
