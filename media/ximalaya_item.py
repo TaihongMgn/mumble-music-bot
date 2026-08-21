@@ -300,13 +300,36 @@ class XimalayaItem(BaseItem):
                     protected_paths=(self.path, partial_path)) as quota:
                 self.log.info(
                     "ximalaya: downloading %s - %s", self.title, self.artist)
-                response = requests.get(
-                    self.url,
-                    stream=True,
-                    timeout=30,
-                    headers=UA,
-                )
-                response.raise_for_status()
+                try:
+                    response = requests.get(
+                        self.url,
+                        stream=True,
+                        timeout=30,
+                        headers=UA,
+                    )
+                    response.raise_for_status()
+                except requests.RequestException:
+                    # Direct URLs expire after about 20 minutes, so revalidate once.
+                    self.log.warning(
+                        "ximalaya: download URL failed for %s, re-validating",
+                        self.track_id)
+                    if response is not None:
+                        response.close()
+                        response = None
+                    self.url = ''
+                    try:
+                        self.validate()
+                    except ValidationFailedError:
+                        raise
+                    if not self.url:
+                        raise
+                    response = requests.get(
+                        self.url,
+                        stream=True,
+                        timeout=30,
+                        headers=UA,
+                    )
+                    response.raise_for_status()
 
                 content_length = response.headers.get('content-length')
                 try:
@@ -369,6 +392,5 @@ class XimalayaItem(BaseItem):
         dict_data = super().to_dict()
         dict_data['track_id'] = self.track_id
         dict_data['artist'] = self.artist
-        dict_data['url'] = self.url
         dict_data['is_paid'] = self.is_paid
         return dict_data
