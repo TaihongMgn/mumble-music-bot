@@ -787,7 +787,7 @@ def ximalaya_account():
         return jsonify({'logged_in': False})
     try:
         resp = requests.get(
-            'https://www.ximalaya.com/revision/account/v1/getUserInfo',
+            'https://www.ximalaya.com/revision/main/getCurrentUser',
             headers={'User-Agent': _XM_PASSPORT_HEADERS['User-Agent'],
                      'Cookie': cookie},
             timeout=30)
@@ -798,10 +798,11 @@ def ximalaya_account():
             return jsonify({
                 'logged_in': True,
                 'nickname': info.get('nickname', ''),
+                'avatar': info.get('avatar', '') or info.get('avatarUrl', ''),
                 'uid': info.get('uid', ''),
             })
         return jsonify({'logged_in': False})
-    except (requests.RequestException, ValueError, TypeError):
+    except (requests.RequestException, ValueError, TypeError, KeyError):
         log.exception("web: ximalaya account check failed")
         return jsonify({'logged_in': False})
 

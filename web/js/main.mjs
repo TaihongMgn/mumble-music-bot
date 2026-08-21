@@ -1415,10 +1415,12 @@ function renderXimalayaAccount(data) {
     return;
   }
   const nickname = escapeNeteaseHtml(data.nickname || '');
+  const avatar = data.avatar ?
+    '<img src="' + escapeNeteaseHtml(data.avatar) + '" width="40" height="40" class="rounded-circle mr-2" alt="">' : '';
   ximalayaAccountBody.innerHTML =
     '<div class="d-flex align-items-center">' +
-      '<i class="fas fa-user-circle mr-2" aria-hidden="true"></i>' +
-      '<div>' + ximalayaAccountLabel('loggedIn').replace('{nickname}', nickname) + '</div>' +
+      avatar +
+      '<div class="flex-grow-1"><div>' + ximalayaAccountLabel('loggedIn').replace('{nickname}', nickname) + '</div></div>' +
     '</div>' +
     '<button type="button" class="btn btn-sm btn-outline-secondary mt-3 ximalaya-logout-btn">' +
       '<i class="fas fa-sign-out-alt mr-1" aria-hidden="true"></i>' +
