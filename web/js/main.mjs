@@ -1337,17 +1337,23 @@ async function checkXimalayaQrLogin(qrId) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Ximalaya QR login check failed');
     const ret = Number(data.ret);
-    if (ret === 32001) {
-      setXimalayaQrStatus(ximalayaAccountLabel('loginWaiting'));
-    } else if (ret === 0) {
+    if (ret === 0) {
       stopXimalayaQrPolling();
       setXimalayaQrStatus(ximalayaAccountLabel('loginSuccess'));
       if (ximalayaQrLoginModal) ximalayaQrLoginModal.hide();
       loadXimalayaAccount();
-    } else {
+    } else if (ret === 32001) {
+      // ??????????
+      setXimalayaQrStatus(ximalayaAccountLabel('loginWaiting'));
+    } else if (ret === 32000) {
+      // ????
+      setXimalayaQrStatus(ximalayaAccountLabel('loginWaiting'));
+    } else if (ret === 32002 || ret === 32003) {
+      // ?????????/?????
       stopXimalayaQrPolling();
       setXimalayaQrStatus(ximalayaAccountLabel('loginExpired'));
     }
+    // ????????????????
   } catch (error) {
     // QR polling fails are kept in the modal and retried after 2 seconds
     console.warn('Ximalaya QR login check failed, will retry', error);
@@ -1492,21 +1498,18 @@ async function checkNeteaseQrLogin(key) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Netease QR login check failed');
     const code = Number(data.code);
-    if (code === 801) {
-      setNeteaseQrStatus(neteaseAccountLabel('qrWaitingLabel'));
-    } else if (code === 802) {
-      setNeteaseQrStatus(neteaseAccountLabel('qrScannedLabel'));
-    } else if (code === 803) {
+    if (code === 803) {
       stopNeteaseQrPolling();
       neteaseQrSetKey(null);
       setNeteaseQrStatus(neteaseAccountLabel('qrSuccessLabel'));
       if (neteaseQrLoginModal) neteaseQrLoginModal.hide();
       loadNeteaseAccount();
-    } else {
-      stopNeteaseQrPolling();
-      neteaseQrSetKey(null);
-      setNeteaseQrStatus(neteaseAccountLabel('qrExpiredLabel'));
+    } else if (code === 801) {
+      setNeteaseQrStatus(neteaseAccountLabel('qrWaitingLabel'));
+    } else if (code === 802) {
+      setNeteaseQrStatus(neteaseAccountLabel('qrScannedLabel'));
     }
+    // ?? code?????
   } catch (error) {
     // 缃戠粶鎶栧姩/API 鎱㈡椂涓嶈缁堟杞锛屼笅涓€娆?2 绉掑悗鍐嶈瘯
     console.warn('Netease QR login check failed, will retry', error);

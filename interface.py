@@ -708,6 +708,13 @@ _XM_PASSPORT_HEADERS = {
     'Origin': 'https://www.ximalaya.com',
 }
 
+_XM_PASSPORT_SESSION = requests.Session()
+_XM_PASSPORT_SESSION.headers.update(_XM_PASSPORT_HEADERS)
+
+def _xm_passport_get(url, **kwargs):
+    kwargs.pop('headers', None)
+    return _XM_PASSPORT_SESSION.get(url, timeout=30, **kwargs)
+
 _XM_QR_LOGIN_KEYS = {}
 
 
@@ -715,11 +722,9 @@ _XM_QR_LOGIN_KEYS = {}
 @requires_auth
 def ximalaya_qr_start():
     try:
-        resp = requests.get(
+        resp = _xm_passport_get(
             'https://passport.ximalaya.com/web/qrCode/gen',
-            params={'level': 'L', 'source': '喜马拉雅网页端'},
-            headers=_XM_PASSPORT_HEADERS,
-            timeout=30)
+            params={'level': 'L', 'source': '???????'})
         resp.raise_for_status()
         data = resp.json()
         if data.get('ret') != 0:
@@ -747,19 +752,21 @@ def ximalaya_qr_check():
         return jsonify({'ret': 32000, 'msg': ''})
     try:
         ts_ms = int(time.time() * 1000)
-        resp = requests.get(
-            'https://passport.ximalaya.com/web/qrCode/check/{}/{}'.format(qr_id, ts_ms),
-            headers=_XM_PASSPORT_HEADERS,
-            timeout=30)
+        resp = _xm_passport_get(
+            'https://passport.ximalaya.com/web/qrCode/check/{}/{}'.format(qr_id, ts_ms))
         resp.raise_for_status()
         data = resp.json()
         ret = data.get('ret', 32000)
         if ret == 0:
-            set_cookie_headers = resp.headers.getlist('Set-Cookie')
+            set_cookie_headers = []
+            try:
+                set_cookie_headers = resp.raw.headers.getlist('Set-Cookie')
+            except (AttributeError, TypeError):
+                pass
             if not set_cookie_headers:
-                set_cookie_headers = resp.headers.get('Set-Cookie', '')
-                if isinstance(set_cookie_headers, str):
-                    set_cookie_headers = [set_cookie_headers]
+                single = resp.headers.get('Set-Cookie', '')
+                if single:
+                    set_cookie_headers = [single]
             new_cookie = _xm_parse_set_cookie(set_cookie_headers)
             existing = _xm_load_cookie()
             merged = _xm_merge_cookies(existing, new_cookie)
@@ -767,7 +774,7 @@ def ximalaya_qr_check():
                 _xm_save_cookie(merged)
             _XM_QR_LOGIN_KEYS.pop(qr_id, None)
         return jsonify({'ret': ret, 'msg': data.get('msg', '')})
-    except requests.RequestException:
+    except (requests.RequestException, ValueError, TypeError, KeyError):
         log.exception("web: ximalaya qr_check failed")
         return jsonify({'ret': 32000, 'msg': ''}), 502
 
