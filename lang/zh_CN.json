@@ -264,6 +264,7 @@
         "ximalaya_web_resolve": "解析",
         "ximalaya_web_add_track": "添加到播放列表",
         "ximalaya_web_add_album": "添加整个专辑",
+        "ximalaya_web_add_selected": "添加选中",
         "ximalaya_web_free": "免费",
         "ximalaya_web_vip": "付费",
         "ximalaya_web_album_tracks": "{count} 集",

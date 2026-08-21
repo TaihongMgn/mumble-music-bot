@@ -623,28 +623,42 @@ def ximalaya_resolve():
                 'is_paid': bool(data.get('is_paid', False)),
             })
         else:
-            resp = requests.get(
-                'https://www.ximalaya.com/revision/album/getTracksList',
-                params={'albumId': album_id, 'pageNum': 1, 'sort': 0},
-                headers={**_XM_UA, 'Referer': 'https://www.ximalaya.com/album/{}'.format(album_id)},
-                timeout=30)
-            resp.raise_for_status()
-            body = resp.json()
-            data = body.get('data') or {}
-            tracks = data.get('tracks') or []
-            preview = [{
-                'track_id': str(t.get('trackId', '')),
-                'title': t.get('title', ''),
-                'duration': int(t.get('duration') or 0),
-                'is_paid': bool(t.get('isPaid', False)),
-            } for t in tracks[:10]]
-            album_title = tracks[0].get('albumTitle', '') if tracks else ''
+            # 翻页拉取全部曲目
+            all_tracks = []
+            page_num = 1
+            album_title = ''
+            while True:
+                resp = requests.get(
+                    'https://www.ximalaya.com/revision/album/getTracksList',
+                    params={'albumId': album_id, 'pageNum': page_num, 'sort': 0},
+                    headers={**_XM_UA, 'Referer': 'https://www.ximalaya.com/album/{}'.format(album_id)},
+                    timeout=30)
+                resp.raise_for_status()
+                body = resp.json()
+                data = body.get('data') or {}
+                tracks = data.get('tracks') or []
+                if not tracks:
+                    break
+                if not album_title and tracks:
+                    album_title = tracks[0].get('albumTitle', '')
+                for t in tracks:
+                    all_tracks.append({
+                        'track_id': str(t.get('trackId', '')),
+                        'title': t.get('title', ''),
+                        'duration': int(t.get('duration') or 0),
+                        'is_paid': bool(t.get('isPaid', False)),
+                    })
+                page_size = int(data.get('pageSize') or 30)
+                total = int(data.get('trackTotalCount') or 0)
+                if page_num * page_size >= total or len(tracks) < page_size:
+                    break
+                page_num += 1
             return jsonify({
                 'kind': 'album',
                 'album_id': album_id,
                 'album_title': album_title,
-                'total': int(data.get('trackTotalCount') or 0),
-                'tracks': preview,
+                'total': len(all_tracks),
+                'tracks': all_tracks,
             })
     except (requests.RequestException, ValueError, TypeError):
         log.exception("web: ximalaya resolve failed")
@@ -1195,6 +1209,10 @@ def post():
                 if xm_payload.get('kind') == 'album':
                     album_id = xm_payload.get('album_id', '')
                     album_title = xm_payload.get('album_title', '')
+                    track_ids = xm_payload.get('track_ids') or None
+                    if isinstance(track_ids, str):
+                        track_ids = [track_ids]
+                    wanted = set(str(t) for t in (track_ids or []))
                     page_num = 1
                     added = 0
                     while True:
@@ -1210,9 +1228,12 @@ def post():
                         if not tracks:
                             break
                         for t in tracks:
+                            tid = str(t.get('trackId', ''))
+                            if wanted and tid not in wanted:
+                                continue
                             music_wrapper = get_cached_wrapper_from_scrap(
                                 type='ximalaya',
-                                track_id=str(t.get('trackId', '')),
+                                track_id=tid,
                                 title=t.get('title', ''),
                                 artist=t.get('anchorName', ''),
                                 user=user)

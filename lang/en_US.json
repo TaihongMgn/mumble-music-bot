@@ -264,6 +264,7 @@
         "ximalaya_web_resolve": "Resolve",
         "ximalaya_web_add_track": "Add to playlist",
         "ximalaya_web_add_album": "Add entire album",
+        "ximalaya_web_add_selected": "Add selected",
         "ximalaya_web_free": "Free",
         "ximalaya_web_vip": "Paid",
         "ximalaya_web_album_tracks": "{count} tracks",

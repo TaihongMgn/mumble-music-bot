@@ -1255,21 +1255,28 @@ if (ximalayaResolveBtn) {
           </div>
         `;
       } else {
-        const tracksHtml = (data.tracks || []).map((t) => {
+        const tracksHtml = (data.tracks || []).map((t, idx) => {
           const badge = t.is_paid
             ? `<small class="badge badge-warning text-dark ml-1">${escapeNeteaseHtml(ximalayaCard.dataset.vip || '付费')}</small>`
             : `<small class="badge badge-success ml-1">${escapeNeteaseHtml(ximalayaCard.dataset.free || '免费')}</small>`;
-          return `<div class="mb-1">${escapeNeteaseHtml(t.title)}${badge}</div>`;
+          return `<div class="mb-1 d-flex align-items-center">
+            <input type="checkbox" class="ximalaya-track-check mr-2" data-id="${escapeNeteaseHtml(t.track_id)}"
+              data-title="${escapeNeteaseHtml(t.title)}" data-artist="">
+            <span class="flex-grow-1 text-truncate">${escapeNeteaseHtml(t.title)}</span>${badge}
+          </div>`;
         }).join('');
         ximalayaResult.innerHTML = `
           <div class="mb-2">
             <div><strong>${escapeNeteaseHtml(data.album_title)}</strong>
               <span class="text-muted ml-2">${escapeNeteaseHtml((ximalayaCard.dataset.tracks || '{count} 集').replace('{count}', data.total))}</span>
             </div>
-            <button type="button" class="btn btn-sm btn-primary mt-2 ximalaya-add-album-btn"
+            <button type="button" class="btn btn-sm btn-primary mt-2 ximalaya-add-selected-btn"
+              data-id="${escapeNeteaseHtml(data.album_id)}"
+              data-title="${escapeNeteaseHtml(data.album_title)}">${escapeNeteaseHtml(ximalayaCard.dataset.addSelected || '添加选中')}</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2 ml-2 ximalaya-add-album-btn"
               data-id="${escapeNeteaseHtml(data.album_id)}"
               data-title="${escapeNeteaseHtml(data.album_title)}">${escapeNeteaseHtml(ximalayaCard.dataset.addAlbum || '添加整个专辑')}</button>
-            <div class="mt-2">${tracksHtml}</div>
+            <div class="mt-2 ximalaya-track-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #444; padding: 8px; border-radius: 4px;">${tracksHtml}</div>
           </div>
         `;
       }
@@ -1280,6 +1287,19 @@ if (ximalayaResolveBtn) {
             track_id: button.dataset.id,
             title: button.dataset.title,
             artist: button.dataset.artist,
+          })});
+        });
+      });
+      ximalayaResult.querySelectorAll('.ximalaya-add-selected-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          const selected = ximalayaResult.querySelectorAll('.ximalaya-track-check:checked');
+          const trackIds = Array.from(selected).map((cb) => cb.dataset.id);
+          if (!trackIds.length) return;
+          request('post', {add_ximalaya: JSON.stringify({
+            kind: 'album',
+            album_id: button.dataset.id,
+            album_title: button.dataset.title,
+            track_ids: trackIds,
           })});
         });
       });
