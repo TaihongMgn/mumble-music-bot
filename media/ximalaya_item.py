@@ -88,14 +88,18 @@ def _xm_load_cookie():
 
 
 def _fetch_vip_url(track_id, cookie):
-    """通过 mpay 接口获取会员音频 URL。"""
+    """通过 mpay 接口获取会员音频 URL。
+
+    实测（2026-08-21）：mpay 接口**匿名**请求返回 ret=0 + isAuthorized=true
+    的完整版音频；带登录 cookie 反而触发风控（ret=999 账号异常）。
+    因此这里不携带 Cookie 头。
+    """
     import time
     ts = int(time.time())
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/150.0.0.0 Safari/537.36',
-        'Cookie': cookie,
     }
     resp = requests.get(
         'https://mpay.ximalaya.com/mobile/track/pay/{}/{}'.format(track_id, ts),
@@ -109,16 +113,20 @@ def _fetch_vip_url(track_id, cookie):
         return None
     filename = decrypt_filename(vip_info['fileId'], vip_info['seed'])
     sign, token, timestamp = decrypt_url_params(vip_info['ep'])
-    url = "{domain}/download/{apiVersion}{filename}?sign={sign}&token={token}&timestamp={timestamp}&buy_key={buyKey}&duration={duration}".format(
+    buy_key = vip_info.get('buyKey', '')
+    url = ("{domain}/download/{apiVersion}{filename}"
+           "?sign={sign}&token={token}&timestamp={timestamp}"
+           "&duration={duration}").format(
         domain=vip_info['domain'],
         apiVersion=vip_info['apiVersion'],
         filename=filename,
         sign=sign,
         token=token,
         timestamp=timestamp,
-        buy_key=vip_info['buyKey'],
         duration=vip_info['duration'],
     )
+    if buy_key:
+        url += '&buy_key=' + buy_key
     return url
 
 
@@ -213,24 +221,23 @@ class XimalayaItem(BaseItem):
                 detail = self._fetch_detail()
                 if detail.get('is_paid'):
                     self.is_paid = True
-                    # 尝试用 cookie 获取会员播放链接
-                    cookie = _xm_load_cookie()
-                    if cookie:
-                        try:
-                            vip_url = _fetch_vip_url(self.track_id, cookie)
-                            if vip_url:
-                                self.url = vip_url
-                                self.title = detail.get('title', '') or self.title
-                                self.artist = detail.get('nickname', '') or self.artist
-                                self.duration = int(float(detail.get('duration', 0) or 0))
-                                self.thumbnail = detail.get('cover_url', '') or ''
-                                self.keywords = "{} {}".format(self.title, self.artist).strip()
-                                self.ready = 'validated'
-                                self.version += 1
-                                return True
-                        except (requests.RequestException, ValueError, TypeError, KeyError):
-                            log.exception("ximalaya: VIP URL fetch failed for %s", self.track_id)
-                    # 没有 cookie 或解密失败
+                    # mpay 接口匿名即可获取完整版（带 cookie 反而触发风控），
+                    # 直接尝试；失败才提示需登录会员。
+                    try:
+                        vip_url = _fetch_vip_url(self.track_id, '')
+                        if vip_url:
+                            self.url = vip_url
+                            self.title = detail.get('title', '') or self.title
+                            self.artist = detail.get('nickname', '') or self.artist
+                            self.duration = int(float(detail.get('duration', 0) or 0))
+                            self.thumbnail = detail.get('cover_url', '') or ''
+                            self.keywords = "{} {}".format(self.title, self.artist).strip()
+                            self.ready = 'validated'
+                            self.version += 1
+                            return True
+                    except (requests.RequestException, ValueError, TypeError, KeyError):
+                        log.exception("ximalaya: VIP URL fetch failed for %s", self.track_id)
+                    # 解密失败
                     self.ready = 'failed'
                     raise ValidationFailedError(tr('ximalaya_paid_prompt'))
 
