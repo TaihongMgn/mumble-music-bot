@@ -19,6 +19,7 @@ from media.cache import get_cached_wrapper_from_scrap, get_cached_wrapper_by_id,
     get_cached_wrapper, get_cached_wrappers, get_cached_wrapper_from_dict, get_cached_wrappers_from_dicts
 from media.url_from_playlist import get_playlist_info
 from netease_cmd import *
+from ximalaya_cmd import *
 
 log = logging.getLogger("bot")
 
@@ -73,6 +74,9 @@ def register_all_commands(bot):
     bot.register_command(commands('yun_gedan'), cmd_yun_gedan)
     bot.register_command(commands('yun_gedanid'), cmd_yun_gedanid)
     bot.register_command(commands('yun_login'), cmd_yun_login)
+    bot.register_command('xm', cmd_xm_dispatch, access_outside_channel=True)
+    bot.register_command(commands('xm_play'), cmd_xm_play)
+    bot.register_command(commands('xm_add'), cmd_xm_add)
 
     # admin command
     bot.register_command(commands('add_webinterface_user'), cmd_web_user_add, admin=True)

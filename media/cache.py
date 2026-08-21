@@ -10,6 +10,7 @@ import media.url
 import media.url_from_playlist
 import media.radio
 import media.netease_item
+import media.ximalaya_item
 from database import MusicDatabase, Condition
 import variables as var
 import util

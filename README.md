@@ -10,7 +10,7 @@
 
 ## ✨ 功能亮点
 
-- **🎵 多音乐源**：网易云音乐、YouTube、SoundCloud、本地文件、网络电台
+- **🎵 多音乐源**：网易云音乐、喜马拉雅（链接播放/专辑）、YouTube、SoundCloud、本地文件、网络电台
 - **☁️ 网易云深度集成**：
   - `!yun` 命令搜索 / 点播 / 歌单，Web 面板搜索、保存歌单
   - **下载播放模式**：歌曲先下载到本地再播放，同一首歌二次点播秒开（本地缓存命中）
@@ -72,6 +72,7 @@ docker compose up -d --pull always
 | `!yun playid [id]` / `!yun addid [id]` | 按歌曲 ID 播放 / 添加 |
 | `!yun gedan [歌单名]` / `!yun gedanid [id]` | 搜索 / 按 ID 播放歌单 |
 | `!yun login` | 网易云二维码登录（VIP 歌曲需要） |
+| `!xm <链接或ID>` | 播放喜马拉雅声音 / 整单加入专辑（`ximalaya.com/sound/xxx` 或 `/album/xxx`） |
 | `!play [搜索词]` | 播放 YouTube / SoundCloud |
 | `!help` | 全部命令 |
 | `!duck on/off` | 说话自动降低音量开关 |
