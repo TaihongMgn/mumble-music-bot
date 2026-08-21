@@ -1296,6 +1296,144 @@ if (ximalayaResolveBtn) {
     }
   });
 }
+
+// Ximalaya account and QR login
+const ximalayaAccountCard = document.getElementById('ximalaya-account-card');
+const ximalayaAccountBody = document.getElementById('ximalaya-account-body');
+
+function ximalayaAccountLabel(name) {
+  return ximalayaAccountCard ? escapeNeteaseHtml(ximalayaAccountCard.dataset[name] || '') : '';
+}
+
+const ximalayaQrLoginModalElement = document.getElementById('ximalayaQrLoginModal');
+const ximalayaQrLoginModal = ximalayaQrLoginModalElement ? new Modal(ximalayaQrLoginModalElement) : null;
+const ximalayaQrLoginImage = document.getElementById('ximalayaQrLoginImage');
+const ximalayaQrLoginStatus = document.getElementById('ximalayaQrLoginStatus');
+let ximalayaQrPollTimer = null;
+let ximalayaQrTimeoutTimer = null;
+let ximalayaQrChecking = false;
+
+function stopXimalayaQrPolling() {
+  if (ximalayaQrPollTimer) {
+    clearInterval(ximalayaQrPollTimer);
+    ximalayaQrPollTimer = null;
+  }
+  if (ximalayaQrTimeoutTimer) {
+    clearTimeout(ximalayaQrTimeoutTimer);
+    ximalayaQrTimeoutTimer = null;
+  }
+  ximalayaQrChecking = false;
+}
+
+function setXimalayaQrStatus(text) {
+  if (ximalayaQrLoginStatus) ximalayaQrLoginStatus.textContent = text;
+}
+
+async function checkXimalayaQrLogin(qrId) {
+  if (ximalayaQrChecking) return;
+  ximalayaQrChecking = true;
+  try {
+    const response = await fetch('/api/ximalaya/qr_check?qr_id=' + encodeURIComponent(qrId));
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Ximalaya QR login check failed');
+    const ret = Number(data.ret);
+    if (ret === 32001) {
+      setXimalayaQrStatus(ximalayaAccountLabel('loginWaiting'));
+    } else if (ret === 0) {
+      stopXimalayaQrPolling();
+      setXimalayaQrStatus(ximalayaAccountLabel('loginSuccess'));
+      if (ximalayaQrLoginModal) ximalayaQrLoginModal.hide();
+      loadXimalayaAccount();
+    } else {
+      stopXimalayaQrPolling();
+      setXimalayaQrStatus(ximalayaAccountLabel('loginExpired'));
+    }
+  } catch (error) {
+    // QR polling fails are kept in the modal and retried after 2 seconds
+    console.warn('Ximalaya QR login check failed, will retry', error);
+  } finally {
+    ximalayaQrChecking = false;
+  }
+}
+
+async function startXimalayaQrLogin() {
+  if (!ximalayaQrLoginModal) return;
+  if (ximalayaQrPollTimer) stopXimalayaQrPolling();
+  try {
+    const response = await fetch('/api/ximalaya/qr_start', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || !data.qr_id || !data.qr_img) {
+      throw new Error(data.error || 'Could not create Ximalaya login QR code');
+    }
+    ximalayaQrLoginImage.src = data.qr_img;
+    setXimalayaQrStatus(ximalayaAccountLabel('loginWaiting'));
+    ximalayaQrLoginModal.show();
+    ximalayaQrPollTimer = setInterval(() => checkXimalayaQrLogin(data.qr_id), 2000);
+    ximalayaQrTimeoutTimer = setTimeout(() => {
+      stopXimalayaQrPolling();
+      setXimalayaQrStatus(ximalayaAccountLabel('loginExpired'));
+    }, 300000);
+  } catch (error) {
+    console.error('Ximalaya QR login start failed', error);
+    setXimalayaQrStatus(error.message || ximalayaAccountLabel('loginExpired'));
+  }
+}
+
+if (ximalayaQrLoginModalElement) {
+  ximalayaQrLoginModalElement.addEventListener('hidden.bs.modal', function() {
+    stopXimalayaQrPolling();
+  });
+}
+
+async function logoutXimalayaAccount(button) {
+  button.disabled = true;
+  try {
+    const response = await fetch('/api/ximalaya/logout', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Ximalaya logout failed');
+    await loadXimalayaAccount();
+  } catch (error) {
+    console.error('Ximalaya logout failed', error);
+    button.disabled = false;
+  }
+}
+
+function renderXimalayaAccount(data) {
+  if (!ximalayaAccountCard || !ximalayaAccountBody) return;
+  if (!data.logged_in) {
+    ximalayaAccountBody.innerHTML =
+      '<button type="button" class="btn btn-sm btn-primary ximalaya-login-btn">' +
+      '<i class="fas fa-qrcode mr-1" aria-hidden="true"></i>' +
+      ximalayaAccountLabel('loginLabel') + '</button>';
+    ximalayaAccountBody.querySelector('.ximalaya-login-btn').addEventListener('click', startXimalayaQrLogin);
+    return;
+  }
+  const nickname = escapeNeteaseHtml(data.nickname || '');
+  ximalayaAccountBody.innerHTML =
+    '<div class="d-flex align-items-center">' +
+      '<i class="fas fa-user-circle mr-2" aria-hidden="true"></i>' +
+      '<div>' + ximalayaAccountLabel('loggedIn').replace('{nickname}', nickname) + '</div>' +
+    '</div>' +
+    '<button type="button" class="btn btn-sm btn-outline-secondary mt-3 ximalaya-logout-btn">' +
+      '<i class="fas fa-sign-out-alt mr-1" aria-hidden="true"></i>' +
+      ximalayaAccountLabel('logoutLabel') + '</button>';
+  ximalayaAccountBody.querySelector('.ximalaya-logout-btn').addEventListener('click', function() {
+    logoutXimalayaAccount(this);
+  });
+}
+
+async function loadXimalayaAccount() {
+  if (!ximalayaAccountCard || !ximalayaAccountBody) return;
+  try {
+    const response = await fetch('/api/ximalaya/account');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Ximalaya account loading failed');
+    renderXimalayaAccount(data);
+  } catch (error) {
+    console.error('Ximalaya account loading failed', error);
+  }
+}
+
 // Netease Cloud Music playlists
 const neteasePlaylistCard = document.getElementById('netease-playlist-card');
 const neteasePlaylistInput = document.getElementById('netease-playlist-input');
@@ -1742,6 +1880,7 @@ if (neteasePlaylistFetchBtn) {
 }
 
 loadNeteaseAccount();
+loadXimalayaAccount();
 loadSessionUser();
 
 // ---------------------

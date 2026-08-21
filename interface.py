@@ -646,6 +646,164 @@ def ximalaya_resolve():
         log.exception("web: ximalaya resolve failed")
         return jsonify({'error': tr_web('ximalaya_web_error')}), 502
 
+# --- Ximalaya cookie management (simple functions, no class) ---
+_XM_COOKIE_FILE = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    var.config.get('ximalaya', 'cookie_file', fallback='config/ximalaya_cookie.txt'))
+
+
+def _xm_load_cookie():
+    try:
+        with open(_XM_COOKIE_FILE, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except (IOError, FileNotFoundError):
+        return ''
+
+
+def _xm_save_cookie(cookie_str):
+    parent = os.path.dirname(_XM_COOKIE_FILE)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(_XM_COOKIE_FILE, 'w', encoding='utf-8') as f:
+        f.write(cookie_str.strip())
+
+
+def _xm_parse_set_cookie(set_cookie_headers):
+    """Parse multiple Set-Cookie header values into a single Cookie string."""
+    cookies = {}
+    for header in set_cookie_headers:
+        parts = header.split(';')
+        if parts and '=' in parts[0]:
+            name, value = parts[0].strip().split('=', 1)
+            cookies[name.strip()] = value.strip()
+    return '; '.join('{}={}'.format(k, v) for k, v in cookies.items())
+
+
+def _xm_merge_cookies(existing_cookie, new_cookie_str):
+    """Merge new cookies into existing cookie string (new overwrites old)."""
+    merged = {}
+    for part in existing_cookie.split(';') if existing_cookie else []:
+        if '=' in part:
+            k, v = part.strip().split('=', 1)
+            merged[k] = v
+    for part in new_cookie_str.split(';') if new_cookie_str else []:
+        if '=' in part:
+            k, v = part.strip().split('=', 1)
+            merged[k] = v
+    return '; '.join('{}={}'.format(k, v) for k, v in merged.items())
+
+
+def _xm_get_cookie_headers():
+    cookie = _xm_load_cookie()
+    if cookie:
+        return {'Cookie': cookie}
+    return {}
+
+
+_XM_PASSPORT_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36',
+    'Referer': 'https://www.ximalaya.com/login',
+    'Origin': 'https://www.ximalaya.com',
+}
+
+_XM_QR_LOGIN_KEYS = {}
+
+
+@web.route("/api/ximalaya/qr_start", methods=['POST'])
+@requires_auth
+def ximalaya_qr_start():
+    try:
+        resp = requests.get(
+            'https://passport.ximalaya.com/web/qrCode/gen',
+            params={'level': 'L', 'source': '喜马拉雅网页端'},
+            headers=_XM_PASSPORT_HEADERS,
+            timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get('ret') != 0:
+            return jsonify({'error': tr_web('ximalaya_web_error')}), 502
+        qr_id = data.get('qrId', '')
+        qr_img = 'data:image/png;base64,' + data.get('img', '')
+        now = time.time()
+        for old_qr_id, created_at in list(_XM_QR_LOGIN_KEYS.items()):
+            if now - created_at >= 300:
+                _XM_QR_LOGIN_KEYS.pop(old_qr_id, None)
+        _XM_QR_LOGIN_KEYS[qr_id] = now
+        return jsonify({'ret': 0, 'qr_id': qr_id, 'qr_img': qr_img})
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: ximalaya qr_start failed")
+        return jsonify({'error': tr_web('ximalaya_web_error')}), 502
+
+
+@web.route("/api/ximalaya/qr_check", methods=['GET'])
+@requires_auth
+def ximalaya_qr_check():
+    qr_id = (request.args.get('qr_id') or '').strip()
+    created_at = _XM_QR_LOGIN_KEYS.get(qr_id)
+    if not qr_id or created_at is None or time.time() - created_at >= 300:
+        _XM_QR_LOGIN_KEYS.pop(qr_id, None)
+        return jsonify({'ret': 32000, 'msg': ''})
+    try:
+        ts_ms = int(time.time() * 1000)
+        resp = requests.get(
+            'https://passport.ximalaya.com/web/qrCode/check/{}/{}'.format(qr_id, ts_ms),
+            headers=_XM_PASSPORT_HEADERS,
+            timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        ret = data.get('ret', 32000)
+        if ret == 0:
+            set_cookie_headers = resp.headers.getlist('Set-Cookie')
+            if not set_cookie_headers:
+                set_cookie_headers = resp.headers.get('Set-Cookie', '')
+                if isinstance(set_cookie_headers, str):
+                    set_cookie_headers = [set_cookie_headers]
+            new_cookie = _xm_parse_set_cookie(set_cookie_headers)
+            existing = _xm_load_cookie()
+            merged = _xm_merge_cookies(existing, new_cookie)
+            if merged:
+                _xm_save_cookie(merged)
+            _XM_QR_LOGIN_KEYS.pop(qr_id, None)
+        return jsonify({'ret': ret, 'msg': data.get('msg', '')})
+    except requests.RequestException:
+        log.exception("web: ximalaya qr_check failed")
+        return jsonify({'ret': 32000, 'msg': ''}), 502
+
+
+@web.route("/api/ximalaya/account", methods=['GET'])
+@requires_auth
+def ximalaya_account():
+    cookie = _xm_load_cookie()
+    if not cookie:
+        return jsonify({'logged_in': False})
+    try:
+        resp = requests.get(
+            'https://www.ximalaya.com/revision/account/v1/getUserInfo',
+            headers={'User-Agent': _XM_PASSPORT_HEADERS['User-Agent'],
+                     'Cookie': cookie},
+            timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get('ret') == 0 and data.get('data'):
+            info = data['data']
+            return jsonify({
+                'logged_in': True,
+                'nickname': info.get('nickname', ''),
+                'uid': info.get('uid', ''),
+            })
+        return jsonify({'logged_in': False})
+    except (requests.RequestException, ValueError, TypeError):
+        log.exception("web: ximalaya account check failed")
+        return jsonify({'logged_in': False})
+
+
+@web.route("/api/ximalaya/logout", methods=['POST'])
+@requires_auth
+def ximalaya_logout():
+    _xm_save_cookie('')
+    return jsonify({'success': True})
+
+
 def _extract_netease_playlist_id(value):
     value = str(value or '').strip()
     if value.isdigit():

@@ -334,6 +334,35 @@
             <small class="text-muted">{{ tr('ximalaya_web_usage') }}</small>
           </div>
         </div>
+        <div class="card mt-3" id="ximalaya-account-card"
+             data-login-label="{{ tr('ximalaya_web_login') }}"
+             data-logged-in="{{ tr('ximalaya_web_logged_in') }}"
+             data-logout-label="{{ tr('ximalaya_web_logout') }}"
+             data-login-waiting="{{ tr('ximalaya_web_login_waiting') }}"
+             data-login-expired="{{ tr('ximalaya_web_login_expired') }}"
+             data-login-success="{{ tr('ximalaya_web_login_success') }}">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-user-circle mr-2" aria-hidden="true"></i>{{ tr('nav_ximalaya') }}</h3>
+          </div>
+          <div class="card-body" id="ximalaya-account-body"></div>
+        </div>
+        <div class="modal fade" id="ximalayaQrLoginModal" tabindex="-1" role="dialog"
+             aria-labelledby="ximalayaQrLoginModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3 class="modal-title" id="ximalayaQrLoginModalLabel">{{ tr('ximalaya_web_login') }}</h3>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ tr('close') }}">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body text-center">
+                <img id="ximalayaQrLoginImage" class="img-fluid mb-3" alt="{{ tr('ximalaya_web_login') }}">
+                <div id="ximalayaQrLoginStatus" class="text-muted mb-3">{{ tr('ximalaya_web_login_waiting') }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
     </div>
 </div>
 
