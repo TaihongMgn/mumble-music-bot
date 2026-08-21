@@ -326,7 +326,11 @@
              data-add-album="{{ tr('ximalaya_web_add_album') }}"
              data-add-selected="{{ tr('ximalaya_web_add_selected') }}">
           <div class="card-body">
-            <h3 class="card-title"><i class="fas fa-headphones mr-2" aria-hidden="true"></i>{{ tr('nav_ximalaya') }}</h3>
+            <h3 class="card-title"><i class="fas fa-headphones mr-2" aria-hidden="true"></i>{{ tr('nav_ximalaya') }}
+              <a href="https://www.ximalaya.com" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary ml-2">
+                <i class="fas fa-external-link-alt mr-1" aria-hidden="true"></i>{{ tr('ximalaya_web_visit') }}
+              </a>
+            </h3>
             <div class="input-group mb-2">
               <input type="text" class="form-control" id="ximalaya-input" placeholder="{{ tr('ximalaya_web_placeholder') }}">
               <div class="input-group-append">
