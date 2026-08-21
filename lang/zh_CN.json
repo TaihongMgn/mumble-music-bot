@@ -291,6 +291,7 @@
         "cannot_delete_admin": "不能删除管理员账号",
         "username_not_found": "账号不存在",
         "navigation": "主导航",
-        "switch_theme": "切换主题"
+        "switch_theme": "切换主题",
+        "ximalaya": "喜马拉雅"
     }
 }

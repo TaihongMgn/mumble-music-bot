@@ -291,6 +291,7 @@
         "cannot_delete_admin": "Cannot delete the admin account",
         "username_not_found": "Account not found",
         "navigation": "Main navigation",
-        "switch_theme": "Switch theme"
+        "switch_theme": "Switch theme",
+        "ximalaya": "Ximalaya"
     }
 }

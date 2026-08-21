@@ -398,6 +398,7 @@ const filters = {
   url: $('#filter-type-url'),
   radio: $('#filter-type-radio'),
   netease: $('#filter-type-netease'),
+  ximalaya: $('#filter-type-ximalaya'),
 };
 const filter_dir = $('#filter-dir');
 const filter_keywords = $('#filter-keywords');
