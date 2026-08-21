@@ -648,6 +648,10 @@ def ximalaya_resolve():
 
 # --- Ximalaya cookie management (simple functions, no class) ---
 def _xm_cookie_file():
+    # 容器内 /config 是 compose 挂载卷（持久化）；重建镜像不丢。
+    # 本地开发/无挂载卷时回退到源码目录下相对路径。
+    if os.path.isdir('/config'):
+        return os.path.join('/config', 'ximalaya_cookie.txt')
     return os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
         var.config.get('ximalaya', 'cookie_file', fallback='config/ximalaya_cookie.txt'))
