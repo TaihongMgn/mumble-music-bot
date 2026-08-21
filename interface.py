@@ -793,12 +793,15 @@ def ximalaya_account():
             timeout=30)
         resp.raise_for_status()
         data = resp.json()
-        if data.get('ret') == 0 and data.get('data'):
+        if data.get('ret') in (0, 200) and data.get('data'):
             info = data['data']
+            avatar = info.get('logoPic', '') or info.get('avatar', '') or info.get('avatarUrl', '')
+            if avatar.startswith('//'):
+                avatar = 'https:' + avatar
             return jsonify({
                 'logged_in': True,
                 'nickname': info.get('nickname', ''),
-                'avatar': info.get('avatar', '') or info.get('avatarUrl', ''),
+                'avatar': avatar,
                 'uid': info.get('uid', ''),
             })
         return jsonify({'logged_in': False})
