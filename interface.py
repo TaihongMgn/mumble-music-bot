@@ -21,6 +21,7 @@ from media.url import URLItem
 from media.url_from_playlist import PlaylistURLItem
 from media.radio import RadioItem
 from media.netease_item import NeteaseItem
+from media.ximalaya_item import XimalayaItem
 from media.cache import get_cached_wrapper_from_scrap, get_cached_wrapper_by_id, get_cached_wrappers_by_tags, \
     get_cached_wrapper
 from database import MusicDatabase, Condition
@@ -499,6 +500,9 @@ def playlist():
                 artist = item.artist
             duration = item.duration
         elif isinstance(item, NeteaseItem):
+            artist = item.artist or "??"
+            duration = item.duration
+        elif isinstance(item, XimalayaItem):
             artist = item.artist or "??"
             duration = item.duration
         elif isinstance(item, URLItem):
